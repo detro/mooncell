@@ -16,7 +16,7 @@ serde_derive = "1.0.37"
 serde_json = "1.0.13"
 
 [lib]
-name = "mooncell"
+name = "doh"
 path = "src/lib.rs"
 
 [[bin]]
