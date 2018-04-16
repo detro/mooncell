@@ -1,0 +1,24 @@
+[package]
+name = "mooncell"
+version = "0.1.0"
+authors = ["Ivan De Marino <detronizator@gmail.com>"]
+
+[dependencies]
+log = "0.4.1"
+log4rs = "0.8.0"
+
+trust-dns = "0.13.0"
+trust-dns-server = "0.13.0"
+
+reqwest = "0.8.5"
+serde = "1.0.37"
+serde_derive = "1.0.37"
+serde_json = "1.0.13"
+
+[lib]
+name = "mooncell"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mooncell"
+path = "src/main.rs"
