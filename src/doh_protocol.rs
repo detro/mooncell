@@ -1,36 +1,45 @@
-use serde_json::{self, Error, Value};
+use reqwest::{Method, Client, Url, Request, Error};
 
+use serde_json::{self, Error as SerdeJsonError, Value};
+
+use std::collections::HashMap;
+use std::str::FromStr;
+use std::string::ToString;
+
+// ----------------------------------------------------------------------------- DoHResponseQuestion
 #[derive(Serialize, Deserialize)]
-pub struct DnsQuestion {
+pub struct DoHResponseQuestion {
   name: String,
-  #[serde(rename = "type", default = "DnsQuestion::question_type_default")]
+  #[serde(rename = "type", default = "DoHResponseQuestion::question_type_default")]
   question_type: u16,
 }
 
-impl DnsQuestion {
+impl DoHResponseQuestion {
   fn question_type_default() -> u16 {
     1
   }
 }
 
+// ------------------------------------------------------------------------------- DoHResponseAnswer
 #[derive(Serialize, Deserialize)]
-pub struct DnsAnswer {
+pub struct DoHResponseAnswer {
   name: String,
-  #[serde(rename = "type", default = "DnsAnswer::answer_type_default")]
+  #[serde(rename = "type", default = "DoHResponseAnswer::answer_type_default")]
   answer_type: u16,
   #[serde(rename = "TTL")]
   ttl: u32,
   data: String,
 }
 
-impl DnsAnswer {
+impl DoHResponseAnswer {
   fn answer_type_default() -> u16 {
     1
   }
 }
 
+// ------------------------------------------------------------------------------------- DoHResponse
 #[derive(Serialize, Deserialize)]
-pub struct DnsResponse {
+pub struct DoHResponse {
   #[serde(rename = "Status")]
   status: u32,
   #[serde(rename = "TC")]
@@ -44,9 +53,9 @@ pub struct DnsResponse {
   #[serde(rename = "CD")]
   checking_disabled: bool,
   #[serde(rename = "Question")]
-  question: Vec<DnsQuestion>,
+  question: Vec<DoHResponseQuestion>,
   #[serde(rename = "Answer")]
-  answer: Vec<DnsAnswer>,
+  answer: Vec<DoHResponseAnswer>,
   #[serde(rename = "Additional")]
   additional: Vec<Value>,
   edns_client_subnet: String,
@@ -54,8 +63,53 @@ pub struct DnsResponse {
   comment: String,
 }
 
+impl FromStr for DoHResponse {
+  type Err = SerdeJsonError;
+
+  fn from_str(doh_response_json: &str) -> Result<Self, SerdeJsonError> {
+    Ok(serde_json::from_str(doh_response_json)?)
+  }
+}
+
+// ------------------------------------------------------------------------------------- DoHProvider
+pub struct DoHProvider {
+  method: Method,
+  base_url: Url,
+  mandatory_params: Vec<(String, String)>
+}
+
+pub fn default_providers() -> HashMap<String, DoHProvider> {
+  let mut providers = HashMap::new();
+
+  providers.insert("google".to_string(), DoHProvider {
+    method: Method::Get,
+    base_url: Url::parse("https://dns.google.com/resolve").unwrap(),
+    mandatory_params: vec![]
+  });
+  providers.insert("cloudflare".to_string(), DoHProvider {
+    method: Method::Get,
+    base_url: Url::parse("https://cloudflare-dns.com/dns-query").unwrap(),
+    mandatory_params: vec![("ct".to_string(), "application/dns-json".to_string())]
+  });
+
+  providers
+}
+
+// -------------------------------------------------------------------------------- Reqwest building
+const QUERY_PARAM_NAME: &'static str = "name";
+const QUERY_PARAM_TYPE: &'static str = "type";
+
+pub fn build_request(client: &Client, provider: &DoHProvider, query_name: &str, query_type: &str) -> Result<Request, Error> {
+  let mut req_builder = client.request(provider.method.clone(), provider.base_url.clone());
+  req_builder.query(provider.mandatory_params.as_slice());
+  req_builder.query(&[(QUERY_PARAM_NAME, query_name), (QUERY_PARAM_TYPE, query_type)]);
+
+  req_builder.build()
+}
+
+// ------------------------------------------------------------------------------------------- Tests
 #[test]
-fn dns_response_type_should_deserialize_correctly() {
+fn should_deserialize_response() {
   let dns_resp_json = r#"{
     "Status": 0,
     "TC": false,
@@ -93,7 +147,7 @@ fn dns_response_type_should_deserialize_correctly() {
     "edns_client_subnet": "12.34.56.78/0"
   }"#;
 
-  let dns_resp: DnsResponse = serde_json::from_str(dns_resp_json).unwrap();
+  let dns_resp = DoHResponse::from_str(dns_resp_json).unwrap();
 
   assert_eq!(dns_resp.status, 0);
   assert_eq!(dns_resp.truncated, false);
@@ -120,10 +174,24 @@ fn dns_response_type_should_deserialize_correctly() {
 }
 
 #[test]
-fn dns_response_type_should_serialize_correctly() {
+fn should_serialize_response() {
   let dns_resp_json_orig = r#"{"Status":0,"TC":false,"RD":true,"RA":true,"AD":false,"CD":false,"Question":[{"name":"apple.com.","type":1}],"Answer":[{"name":"apple.com.","type":1,"TTL":3599,"data":"17.178.96.59"},{"name":"apple.com.","type":1,"TTL":3599,"data":"17.172.224.47"},{"name":"apple.com.","type":1,"TTL":3599,"data":"17.142.160.59"}],"Additional":[],"edns_client_subnet":"12.34.56.78/0","Comment":""}"#;
 
-  let dns_resp: DnsResponse = serde_json::from_str(dns_resp_json_orig).unwrap();
+  let dns_resp = DoHResponse::from_str(dns_resp_json_orig).unwrap();
 
   assert_eq!(serde_json::to_string(&dns_resp).unwrap(), dns_resp_json_orig);
+}
+
+#[test]
+fn should_create_request() {
+  let client = Client::new();
+  let default_providers = default_providers();
+
+  let request = build_request(&client, &default_providers.get("google").unwrap(), "newrelic", "A").unwrap();
+  assert_eq!(request.method(), &Method::Get);
+  assert_eq!(request.url().as_str(), "https://dns.google.com/resolve?name=newrelic&type=A");
+
+  let request = build_request(&client, &default_providers.get("cloudflare").unwrap(), "newrelic", "A").unwrap();
+  assert_eq!(request.method(), &Method::Get);
+  assert_eq!(request.url().as_str(), "https://cloudflare-dns.com/dns-query?ct=application%2Fdns-json&name=newrelic&type=A");
 }
