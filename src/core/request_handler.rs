@@ -19,6 +19,14 @@ impl RequestHandler for DnsQueryHandler {
     info!("Request src: {:?}", request.src);
     info!("Request message: {:?}", request.message);
 
+    // TODO Extract the queries from message
+    // TODO Assemble a request using 'doh::protocol'
+    // TODO Execute a request using 'tokio::spawn'
+    // TODO Gather response body
+    // TODO Deserialize JSON response using 'serde::json'
+    // TODO Assemble responsne message
+    // TODO Return response message
+
     Ok(())
   }
 
