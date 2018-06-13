@@ -1,10 +1,7 @@
-use reqwest::{Method, Client, Url, Request, Error};
-
+use hyper::{Method, Request, Version};
 use serde_json::{self, Error as SerdeJsonError, Value};
-
-use std::collections::HashMap;
-use std::str::FromStr;
-use std::string::ToString;
+use std::{collections::HashMap, str::FromStr, string::ToString};
+use url::Url;
 
 // ----------------------------------------------------------------------------- DoHResponseQuestion
 #[derive(Serialize, Deserialize)]
@@ -72,44 +69,62 @@ impl FromStr for DoHResponse {
 }
 
 // ------------------------------------------------------------------------------------- DoHProvider
-pub struct DoHProvider {
+pub struct DoHProvider<'a> {
   method: Method,
-  base_url: Url,
-  mandatory_params: Vec<(String, String)>
+  host: &'a str,
+  path: &'a str,
+  mandatory_query: Vec<(&'a str, &'a str)>,
 }
 
-pub const DEFAULT_DOH_PROVIDER_GOOGLE: &'static str = "google";
-pub const DEFAULT_DOH_PROVIDER_CLOUDFLARE: &'static str = "cloudflare";
+impl<'a> DoHProvider<'a> {
+  pub const DEFAULT_KEY_GOOGLE: &'static str = "google";
+  pub const DEFAULT_KEY_CLOUDFLARE: &'static str = "cloudflare";
 
-pub fn default_providers<'a>() -> HashMap<&'a str, DoHProvider> {
-  let mut providers = HashMap::new();
+  pub fn defaults<'b>() -> HashMap<&'b str, DoHProvider<'b>> {
+    let mut providers = HashMap::new();
 
-  providers.insert(DEFAULT_DOH_PROVIDER_GOOGLE, DoHProvider {
-    method: Method::Get,
-    base_url: Url::parse("https://dns.google.com/resolve").unwrap(),
-    mandatory_params: vec![]
-  });
-  providers.insert(DEFAULT_DOH_PROVIDER_CLOUDFLARE, DoHProvider {
-    method: Method::Get,
-    base_url: Url::parse("https://cloudflare-dns.com/dns-query").unwrap(),
-    mandatory_params: vec![("ct".to_string(), "application/dns-json".to_string())]
-  });
+    providers.insert(Self::DEFAULT_KEY_GOOGLE, DoHProvider {
+      method: Method::GET,
+      host: "dns.google.com",
+      path: "resolve",
+      mandatory_query: vec![],
+    });
+    providers.insert(Self::DEFAULT_KEY_CLOUDFLARE, DoHProvider {
+      method: Method::GET,
+      host: "cloudflare-dns.com",
+      path: "dns-query",
+      mandatory_query: vec![("ct", "application/dns-json")],
+    });
 
-  providers
+    providers
+  }
+
+  pub fn url(&self) -> Url {
+    let mut url = Url::parse(&format!("https://{}", self.host)).unwrap();
+    url.set_path(self.path);
+
+    for query_param in self.mandatory_query.iter() {
+      url.query_pairs_mut().append_pair(query_param.0, query_param.1);
+    }
+
+    url
+  }
 }
 
-// -------------------------------------------------------------------------------- Reqwest building
-const QUERY_PARAM_NAME: &'static str = "name";
-const QUERY_PARAM_TYPE: &'static str = "type";
+// -------------------------------------------------------------------------------- Request building
+pub fn build_request<'a>(provider: &'a DoHProvider, query_name: &str, query_type: &str) -> Request<()> {
+  // Append to the URL required by the Provider, the query parameters
+  let mut url = provider.url();
+  url.query_pairs_mut()
+    .append_pair("name", query_name)
+    .append_pair("type", query_type);
 
-pub fn build_reqwest(client: &Client, provider: &DoHProvider, query_name: &str, query_type: &str) -> Result<Request, Error> {
-  // Create "Reqwest" object using the provider "method" and "base url"
-  client.request(provider.method.clone(), provider.base_url.clone())
-    // Add the "mandatory query parameters" of the specific provider
-    .query(provider.mandatory_params.as_slice())
-    // Add the query "name" and "type"
-    .query(&[(QUERY_PARAM_NAME, query_name), (QUERY_PARAM_TYPE, query_type)])
-    .build()
+  // Assemble the final request
+  Request::builder()
+    .method(provider.method.clone())
+    .uri(url.to_string())
+    .body(())
+    .unwrap()
 }
 
 // ------------------------------------------------------------------------------------------- Tests
@@ -188,15 +203,39 @@ fn should_serialize_response() {
 }
 
 #[test]
+fn should_produce_default_providers() {
+  let def_providers = DoHProvider::defaults();
+
+  let google_provider = def_providers.get(DoHProvider::DEFAULT_KEY_GOOGLE).unwrap();
+  assert_eq!(google_provider.host, "dns.google.com");
+  assert_eq!(google_provider.path, "resolve");
+  assert_eq!(google_provider.mandatory_query.len(), 0);
+  assert_eq!(google_provider.url().to_string(), "https://dns.google.com/resolve");
+
+  let cloudflare_provider = def_providers.get(DoHProvider::DEFAULT_KEY_CLOUDFLARE).unwrap();
+  assert_eq!(cloudflare_provider.host, "cloudflare-dns.com");
+  assert_eq!(cloudflare_provider.path, "dns-query");
+  assert_eq!(cloudflare_provider.mandatory_query.len(), 1);
+  assert_eq!(cloudflare_provider.mandatory_query[0].0, "ct");
+  assert_eq!(cloudflare_provider.mandatory_query[0].1, "application/dns-json");
+  assert_eq!(cloudflare_provider.url().to_string(), "https://cloudflare-dns.com/dns-query?ct=application%2Fdns-json");
+}
+
+#[test]
 fn should_create_request() {
-  let client = Client::new();
-  let default_providers = default_providers();
+  let default_providers = DoHProvider::defaults();
 
-  let request = build_reqwest(&client, &default_providers.get(DEFAULT_DOH_PROVIDER_GOOGLE).unwrap(), "newrelic", "A").unwrap();
-  assert_eq!(request.method(), &Method::Get);
-  assert_eq!(request.url().as_str(), "https://dns.google.com/resolve?name=newrelic&type=A");
+  let request = build_request(default_providers.get(DoHProvider::DEFAULT_KEY_GOOGLE).unwrap(), "newrelic", "A");
+  assert_eq!(request.version(), Version::HTTP_11);
+  assert_eq!(request.method(), &Method::GET);
+  assert_eq!(request.uri(), "https://dns.google.com/resolve?name=newrelic&type=A");
+  assert_eq!(request.body(), &());
+  assert!(request.headers().is_empty());
 
-  let request = build_reqwest(&client, &default_providers.get(DEFAULT_DOH_PROVIDER_CLOUDFLARE).unwrap(), "newrelic", "A").unwrap();
-  assert_eq!(request.method(), &Method::Get);
-  assert_eq!(request.url().as_str(), "https://cloudflare-dns.com/dns-query?ct=application%2Fdns-json&name=newrelic&type=A");
+  let request = build_request(default_providers.get(DoHProvider::DEFAULT_KEY_CLOUDFLARE).unwrap(), "newrelic", "A");
+  assert_eq!(request.version(), Version::HTTP_11);
+  assert_eq!(request.method(), &Method::GET);
+  assert_eq!(request.uri(), "https://cloudflare-dns.com/dns-query?ct=application%2Fdns-json&name=newrelic&type=A");
+  assert_eq!(request.body(), &());
+  assert!(request.headers().is_empty());
 }

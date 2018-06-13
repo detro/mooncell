@@ -1,13 +1,11 @@
-#[macro_use]
-extern crate log;
+#[macro_use] extern crate log;
 extern crate mooncell;
 extern crate tokio;
-extern crate trust_dns_server;
 
 use log::LevelFilter;
+use mooncell::{core, logging, net};
 use std::{net::{Ipv4Addr, Ipv6Addr}, str::FromStr};
 use tokio::{net::{TcpListener, UdpSocket}};
-use mooncell::{core, net, logging};
 
 fn main() {
   logging::init(LevelFilter::Debug);
