@@ -4,21 +4,21 @@ version = "0.1.0"
 authors = ["Ivan De Marino <detronizator@gmail.com>"]
 
 [dependencies]
-log = "0.4.1"
+log = "0.4.3"
 log4rs = "0.8.0"
 
-tokio = "0.1.6"
+tokio = "0.1.7"
 
 trust-dns-server = "0.14.0"
 trust-dns-proto = "0.4.0"
 
-hyper = "0.12.1"
-hyper-tls = "0.2.1"
-url = "1.7.0"
+hyper = "0.12.6"
+hyper-tls = "0.3.0"
+url = "1.7.1"
 
-serde = "1.0.37"
-serde_derive = "1.0.37"
-serde_json = "1.0.13"
+serde = "1.0.70"
+serde_derive = "1.0.70"
+serde_json = "1.0.22"
 
 [lib]
 name = "mooncell"
