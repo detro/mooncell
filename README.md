@@ -25,3 +25,11 @@ This means that instead of using the "hostname" to connect to the provider DoH r
 pre-resolved IP.
 
 I tested with Google and it works as long as the header "Host: dns.google.com" is added to the request. 
+
+## Compiling
+
+### Windows (x64)
+
+1. Install OpenSSL for Windows 64 bit via the [large dev binaries](http://slproweb.com/products/Win32OpenSSL.html), or in one of the other possible, painful ways
+2. Set varialbe `set OPENSSL_DIR=c:\OpenSSL-Win64` (assuming you installed it in the default path)
+3. `cargo build` should now work
