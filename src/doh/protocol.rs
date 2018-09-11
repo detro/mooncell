@@ -4,7 +4,7 @@ use std::{collections::HashMap, str::FromStr, string::ToString};
 use url::Url;
 
 // ----------------------------------------------------------------------------- DoHResponseQuestion
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DoHResponseQuestion {
   name: String,
   #[serde(rename = "type", default = "DoHResponseQuestion::question_type_default")]
@@ -18,7 +18,7 @@ impl DoHResponseQuestion {
 }
 
 // ------------------------------------------------------------------------------- DoHResponseAnswer
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DoHResponseAnswer {
   name: String,
   #[serde(rename = "type", default = "DoHResponseAnswer::answer_type_default")]
@@ -35,7 +35,7 @@ impl DoHResponseAnswer {
 }
 
 // ------------------------------------------------------------------------------------- DoHResponse
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DoHResponse {
   #[serde(rename = "Status")]
   status: u32,
@@ -53,8 +53,9 @@ pub struct DoHResponse {
   question: Vec<DoHResponseQuestion>,
   #[serde(rename = "Answer")]
   answer: Vec<DoHResponseAnswer>,
-  #[serde(rename = "Additional")]
+  #[serde(rename = "Additional", default)]
   additional: Vec<Value>,
+  #[serde(default)]
   edns_client_subnet: String,
   #[serde(rename = "Comment", default)]
   comment: String,
