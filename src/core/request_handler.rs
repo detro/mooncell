@@ -1,5 +1,6 @@
 use doh::protocol::{build_request, DoHProvider, DoHResponse};
 use hyper::{Body, Client, client::HttpConnector};
+use hyper_tls::HttpsConnector;
 use std::{collections::HashMap, io::Result, str::from_utf8, str::FromStr};
 use tokio::{self, prelude::*};
 use trust_dns_proto::op::{Header, MessageType, OpCode, ResponseCode};
@@ -9,13 +10,17 @@ use trust_dns_server::server::{Request, RequestHandler, ResponseHandler};
 pub struct DnsQueryHandler<'a> {
   default_providers: HashMap<&'a str, DoHProvider<'a>>,
   http_client: Client<HttpConnector, Body>,
+  https_client: Client<HttpsConnector<HttpConnector>, Body>,
 }
 
 impl<'a> DnsQueryHandler<'a> {
   pub fn new() -> Self {
+    let https_connector = HttpsConnector::new(4).unwrap();
+
     DnsQueryHandler {
       default_providers: DoHProvider::defaults(),
       http_client: Client::builder().keep_alive(true).build_http(),
+      https_client: Client::builder().keep_alive(true).build(https_connector),
     }
   }
 
@@ -40,19 +45,17 @@ impl<'a> RequestHandler for DnsQueryHandler<'a> {
       let doh_request = build_request(self.configured_provider(), q_name, q_type.into());
       debug!("DoH {:#?}", doh_request);
 
-      let doh_request_processing_future = self.http_client.request(doh_request)
+      let doh_request_processing_future = self.https_client.request(doh_request)
         .and_then(|res| {
           trace!("Response status: {}", res.status());
           res.into_body().concat2()
         })
-        .map(|_| {
-          info!("All done");
-        })
-//        .and_then(|body| {
-//          let json_response = from_utf8(&body)
-//            .expect("Response should be JSON");
-//          let doh_respose = DoHResponse::from_str(json_response)
-//            .expect("Not a valid DoH response");
+        .map(|body| {
+          let json_response = from_utf8(&body).expect("Response should be JSON");
+          debug!("{:#?}", json_response);
+
+          let doh_response = DoHResponse::from_str(json_response).expect("Not a valid DoH response");
+          debug!("{:#?}", doh_response);
 //
 ////          let mut response = MessageResponse::new(None); //< TODO: provide the actual query that got this response
 ////          let mut response_header = Header::new();
@@ -64,7 +67,7 @@ impl<'a> RequestHandler for DnsQueryHandler<'a> {
 ////          response.answers(records.unwrap());
 ////          response.name_servers(ns.unwrap());
 ////          response.build(response_header)
-//        });
+        })
         .map_err(|err| {
           error!("Query failed: {}", err);
         });
