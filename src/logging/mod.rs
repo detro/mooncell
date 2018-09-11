@@ -14,6 +14,8 @@ pub fn init(log_level_filter: LevelFilter) {
     .logger(Logger::builder().build("tokio_reactor", LevelFilter::Off))
     .logger(Logger::builder().build("tokio", LevelFilter::Off))
     .logger(Logger::builder().build("trust_dns_server", LevelFilter::Off))
+    .logger(Logger::builder().build("hyper", LevelFilter::Off))
+    .logger(Logger::builder().build("hyper_tls", LevelFilter::Off))
     .build(Root::builder().appender("stdout").build(log_level_filter))
     .unwrap();
 
