@@ -15,7 +15,7 @@ fn main() {
   // TODO Make this configurable from CLI
   let listen_ipv4_addr: Vec<Ipv4Addr> = vec![Ipv4Addr::from_str("0.0.0.0").unwrap()];
   let listen_ipv6_addr: Vec<Ipv6Addr> = vec![Ipv6Addr::from_str("::").unwrap()];
-  let listen_port: u16 = 53;
+  let listen_port: u16 = 1053;
 
   // Binding UDP sockets
   let udp_sockets: Vec<UdpSocket> = net::utils::bind_udp_sockets(&listen_ipv4_addr, &listen_ipv6_addr, &listen_port);
