@@ -1,26 +1,79 @@
-use std::io::Result;
+use doh::protocol::{build_request, DoHProvider, DoHResponse};
+use hyper::{Body, Client, client::HttpConnector};
+use std::{collections::HashMap, io::Result, str::from_utf8, str::FromStr};
+use tokio::{self, prelude::*};
+use trust_dns_proto::op::{Header, MessageType, OpCode, ResponseCode};
+use trust_dns_server::authority::MessageResponse;
 use trust_dns_server::server::{Request, RequestHandler, ResponseHandler};
 
-pub struct DnsQueryHandler {}
+pub struct DnsQueryHandler<'a> {
+  default_providers: HashMap<&'a str, DoHProvider<'a>>,
+  http_client: Client<HttpConnector, Body>,
+}
 
-impl DnsQueryHandler {
+impl<'a> DnsQueryHandler<'a> {
   pub fn new() -> Self {
-    DnsQueryHandler {}
+    DnsQueryHandler {
+      default_providers: DoHProvider::defaults(),
+      http_client: Client::builder().keep_alive(true).build_http(),
+    }
+  }
+
+  fn configured_provider(&self) -> &DoHProvider {
+    self.default_providers.get(DoHProvider::DEFAULT_KEY_GOOGLE).unwrap()
   }
 }
 
-impl RequestHandler for DnsQueryHandler {
+impl<'a> RequestHandler for DnsQueryHandler<'a> {
+  fn handle_request<R: ResponseHandler + 'static>(&self,
+                                                  request: &Request,
+                                                  response_handle: R) -> Result<()> {
+    debug!("Request src: {:#?}", request.src);
+    debug!("Request message: {:#?}", request.message);
+    debug!("Request queries: {}", request.message.queries().len());
 
-  fn handle_request<'q, 'a, R: ResponseHandler + 'static>(
-    &'a self,
-    request: &'q Request,
-    response_handle: R,
-  ) -> Result<()> {
-    info!("Request src: {:?}", request.src);
-    info!("Request message: {:?}", request.message);
+    // Submit a DoH query per DNS Query
+    for query in request.message.queries() {
+      let q_type = query.query_type();
+      let q_name = &format!("{}", query.name());
 
-    // TODO Extract the queries from message
-    // TODO Assemble a request using 'doh::protocol'
+      let doh_request = build_request(self.configured_provider(), q_name, q_type.into());
+      debug!("DoH {:#?}", doh_request);
+
+      let doh_request_processing_future = self.http_client.request(doh_request)
+        .and_then(|res| {
+          trace!("Response status: {}", res.status());
+          res.into_body().concat2()
+        })
+        .map(|_| {
+          info!("All done");
+        })
+//        .and_then(|body| {
+//          let json_response = from_utf8(&body)
+//            .expect("Response should be JSON");
+//          let doh_respose = DoHResponse::from_str(json_response)
+//            .expect("Not a valid DoH response");
+//
+////          let mut response = MessageResponse::new(None); //< TODO: provide the actual query that got this response
+////          let mut response_header = Header::new();
+////          response_header.set_id(request.message.id());
+////          response_header.set_op_code(OpCode::Query);
+////          response_header.set_message_type(MessageType::Response);
+////          response_header.set_response_code(ResponseCode::NoError);
+////          response_header.set_authoritative(true);
+////          response.answers(records.unwrap());
+////          response.name_servers(ns.unwrap());
+////          response.build(response_header)
+//        });
+        .map_err(|err| {
+          error!("Query failed: {}", err);
+        });
+
+
+      tokio::spawn(doh_request_processing_future);
+    }
+
+
     // TODO Execute a request using 'tokio::spawn'
     // TODO Gather response body
     // TODO Deserialize JSON response using 'serde::json'
@@ -29,58 +82,4 @@ impl RequestHandler for DnsQueryHandler {
 
     Ok(())
   }
-
 }
-
-//    let request_message = &request.message;
-//    let request_src = &request.src;
-//    debug!("Received request from: {}", request_src.ip().to_string());
-//    debug!("ID: {}", request_message.id());
-//    debug!("Queries: ");
-//    request_message.queries().iter().for_each(|q| {
-//      debug!("  {}", q);
-//    });
-//    debug!("Authoritative: {}", request_message.authoritative());
-//    debug!("Type: {:?}", request_message.message_type());
-//    debug!("Op code: {:?}", request_message.op_code());
-//    debug!("Recursion desired: {}", request_message.recursion_desired());
-//    debug!("Recursion available: {}", request_message.recursion_available());
-//
-//    // @see https://developers.cloudflare.com/1.1.1.1/dns-over-https/json-format/
-//    // https://cloudflare-dns.com/dns-query?
-//    //    ?ct=application/dns-json
-//    //    &name=newrelic.com
-//    //    &type=A
-//    //
-//    // @see https://developers.google.com/speed/public-dns/docs/dns-over-https#dns_response_in_json
-//    // https://dns.google.com/resolve
-//    //    ?name=newrelic.com
-//    //    &type=A
-//    //    &cd=1
-//    //    &edns_client_subnet=0.0.0.0/0
-//
-//    let url = Url::parse_with_params("https://cloudflare-dns.com/dns-query", &[("name", "newrelic.com"), ("type", "A"), ("ct", "application/dns-json")]).unwrap();
-//    let resp_json = reqwest::get(url).unwrap().text().unwrap();
-//    debug!("------");
-//    debug!("{}", resp_json);
-//    debug!("------");
-//
-//    let mut response = Message::new();
-//    response.set_message_type(MessageType::Response);
-//    response.set_op_code(OpCode::Query);
-//    response.set_response_code(ResponseCode::NoError);
-//    response.set_id(request_message.id());
-//
-//    let mut response_record = Record::new();
-//    response_record.set_name(Name::from_str("www.google.com.").unwrap());
-//    response_record.set_rdata(RData::A(Ipv4Addr::from_str("55.44.33.22").unwrap()));
-//    response.add_answer(response_record);
-//
-//    let mut response_record = Record::new();
-//    response_record.set_name(Name::from_str("www.google.com.").unwrap());
-//    response_record.set_rdata(RData::A(Ipv4Addr::from_str("55.44.33.23").unwrap()));
-//    response.add_answer(response_record);
-//
-//    response
-//  }
-//}

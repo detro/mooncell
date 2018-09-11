@@ -6,6 +6,7 @@ extern crate tokio;
 extern crate hyper;
 extern crate url;
 extern crate trust_dns_server;
+extern crate trust_dns_proto;
 
 pub mod core;
 pub mod doh;

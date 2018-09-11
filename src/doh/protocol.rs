@@ -1,4 +1,4 @@
-use hyper::{Method, Request};
+use hyper::{Method, Request, Body};
 use serde_json::{self, Error as SerdeJsonError, Value};
 use std::{collections::HashMap, str::FromStr, string::ToString};
 use url::Url;
@@ -112,7 +112,7 @@ impl<'a> DoHProvider<'a> {
 }
 
 // -------------------------------------------------------------------------------- Request building
-pub fn build_request<'a>(provider: &'a DoHProvider, query_name: &str, query_type: &str) -> Request<()> {
+pub fn build_request<'a>(provider: &'a DoHProvider, query_name: &str, query_type: &str) -> Request<Body> {
   // Append to the URL required by the Provider, the query parameters
   let mut url = provider.url();
   url.query_pairs_mut()
@@ -123,7 +123,7 @@ pub fn build_request<'a>(provider: &'a DoHProvider, query_name: &str, query_type
   Request::builder()
     .method(provider.method.clone())
     .uri(url.to_string())
-    .body(())
+    .body(Body::empty())
     .unwrap()
 }
 
