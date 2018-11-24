@@ -1,10 +1,9 @@
 use std::{
-  net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs}
+  net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs, UdpSocket, TcpListener}
 };
-use tokio::net::{TcpListener, UdpSocket};
 
 pub fn bind_udp_sockets(ipv4_addresses: &Vec<Ipv4Addr>, ipv6_addresses: &Vec<Ipv6Addr>, port: &u16) -> Vec<UdpSocket> {
-  map_ip_addresses_to_sockets(ipv4_addresses, ipv6_addresses, port)
+  map_ips_to_socket_addresses(ipv4_addresses, ipv6_addresses, port)
     .iter()
     .map(|sock_addr| {
       UdpSocket::bind(sock_addr).expect(&format!("Could not bind to UDP: {}", sock_addr))
@@ -12,14 +11,14 @@ pub fn bind_udp_sockets(ipv4_addresses: &Vec<Ipv4Addr>, ipv6_addresses: &Vec<Ipv
 }
 
 pub fn bind_tcp_listeners(ipv4_addresses: &Vec<Ipv4Addr>, ipv6_addresses: &Vec<Ipv6Addr>, port: &u16) -> Vec<TcpListener> {
-  map_ip_addresses_to_sockets(ipv4_addresses, ipv6_addresses, port)
+  map_ips_to_socket_addresses(ipv4_addresses, ipv6_addresses, port)
     .iter()
     .map(|sock_addr| {
       TcpListener::bind(sock_addr).expect(&format!("Could not bind to TCP: {}", sock_addr))
     }).collect()
 }
 
-fn map_ip_addresses_to_sockets(ipv4_addresses: &Vec<Ipv4Addr>, ipv6_addresses: &Vec<Ipv6Addr>, port: &u16) -> Vec<SocketAddr> {
+fn map_ips_to_socket_addresses(ipv4_addresses: &Vec<Ipv4Addr>, ipv6_addresses: &Vec<Ipv6Addr>, port: &u16) -> Vec<SocketAddr> {
   ipv4_addresses
     .into_iter()
     .map(|x| IpAddr::V4(x.clone()))

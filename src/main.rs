@@ -1,11 +1,10 @@
 #[macro_use] extern crate log;
+
 extern crate mooncell;
-extern crate tokio;
 
 use log::LevelFilter;
-use mooncell::{core, logging, net};
+use mooncell::{logging, net};
 use std::{net::{Ipv4Addr, Ipv6Addr}, str::FromStr};
-use tokio::{net::{TcpListener, UdpSocket}};
 
 fn main() {
   logging::init(LevelFilter::Debug);
@@ -17,13 +16,13 @@ fn main() {
   let listen_ipv6_addr: Vec<Ipv6Addr> = vec![Ipv6Addr::from_str("::").unwrap()];
   let listen_port: u16 = 1053;
 
-  // Binding UDP sockets
-  let udp_sockets: Vec<UdpSocket> = net::utils::bind_udp_sockets(&listen_ipv4_addr, &listen_ipv6_addr, &listen_port);
-  debug!("Bound: {:?}", udp_sockets);
-
-  // Binding TCP sockets
-  let tcp_listeners: Vec<TcpListener> = net::utils::bind_tcp_listeners(&listen_ipv4_addr, &listen_ipv6_addr, &listen_port);
-  debug!("Bound: {:?}", tcp_listeners);
-
-  net::server::listen(udp_sockets, tcp_listeners, core::request_handler::DnsQueryHandler::new());
+//  // Binding UDP sockets
+//  let udp_sockets: Vec<UdpSocket> = net::utils::bind_udp_sockets(&listen_ipv4_addr, &listen_ipv6_addr, &listen_port);
+//  debug!("Bound: {:?}", udp_sockets);
+//
+//  // Binding TCP sockets
+//  let tcp_listeners: Vec<TcpListener> = net::utils::bind_tcp_listeners(&listen_ipv4_addr, &listen_ipv6_addr, &listen_port);
+//  debug!("Bound: {:?}", tcp_listeners);
+//
+//  net::server_old::listen(udp_sockets, tcp_listeners, core::dns_query_handler::DnsQueryHandler::new());
 }
