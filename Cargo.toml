@@ -1,9 +1,11 @@
 [package]
 name = "mooncell"
 version = "1.0.0"
+description = "A DNS-over-HTTPS server"
 authors = ["Ivan De Marino <detronizator@gmail.com>"]
 
 [dependencies]
+clap = "2.32.0"
 log = "0.4.6"
 log4rs = "0.8.1"
 
