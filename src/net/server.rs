@@ -1,6 +1,8 @@
-use config::config_provider::ConfigProvider;
 use std::{net::{Ipv4Addr, Ipv6Addr}, thread, time::Duration, io::ErrorKind};
+
+use config::config_provider::ConfigProvider;
 use net::utils::{bind_udp_sockets, bind_tcp_listeners};
+use dns_proto::*;
 
 /// The DNS Server that listens for DNS queries over UDP or TCP requests.
 #[derive(Debug)]
@@ -57,7 +59,13 @@ impl DnsServer {
             match thread_u_sock.recv_from(&mut buf) {
               Ok((amount, src)) => {
                 trace!("Received {} bytes from {}", amount, src);
-                print_bytes_buf(&buf);
+
+                let message = Message::from_bytes(&buf).unwrap();
+                trace!("{:?}", message);
+
+                for q in message.queries() {
+                  trace!("Query - type: {}, class: {}, name: {}", q.query_type(), q.query_class(), q.name());
+                }
 
                 // TODO Pass this request on for processing
               },
@@ -92,16 +100,4 @@ impl DnsServer {
     // TODO
   }
 
-}
-
-fn print_bytes_buf(buf: &[u8]) {
-  buf.iter().enumerate()
-    .for_each(|(i, b)| {
-      print!("{:08b}", b);
-
-      if (i+1) % 4 == 0 {
-        println!();
-      }
-    });
-  println!();
 }
