@@ -60,7 +60,7 @@ impl DnsServer {
               Ok((amount, src)) => {
                 trace!("Received {} bytes from {}", amount, src);
 
-                let message = Message::from_bytes(&buf).unwrap();
+                let message = message_from_bytes(&buf).unwrap();
                 trace!("{:?}", message);
 
                 for q in message.queries() {
