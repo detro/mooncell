@@ -18,7 +18,10 @@ impl DnsServer {
 
   /// Constructor
   ///
+  /// # Parameters
+  ///
   /// * `config` - Configuration to be used by the `DnsServer` when started
+  /// * `sender` - Channel sender to "emit" `DnsRequest` after been received and parsed by the Server
   pub fn new<C: ConfigProvider>(config: &C, sender: Sender<DnsRequest>) -> DnsServer {
     DnsServer {
       ip4s: config.ipv4(),
