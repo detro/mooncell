@@ -15,9 +15,9 @@ pub fn init<C: ConfigProvider>(config: &C) {
 //    .logger(Logger::builder().build("tokio_core", LevelFilter::Off))
 //    .logger(Logger::builder().build("tokio_reactor", LevelFilter::Off))
 //    .logger(Logger::builder().build("tokio", LevelFilter::Off))
-//    .logger(Logger::builder().build("trust_dns_server", LevelFilter::Off))
 //    .logger(Logger::builder().build("hyper", LevelFilter::Off))
 //    .logger(Logger::builder().build("hyper_tls", LevelFilter::Off))
+    .logger(Logger::builder().build("trust_dns_proto", LevelFilter::Off))
     .build(Root::builder().appender("stdout").build(config.log_filter()))
     .unwrap();
 
