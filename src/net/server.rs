@@ -1,8 +1,8 @@
 use std::{net::{Ipv4Addr, Ipv6Addr}, thread, time::Duration, io::ErrorKind, sync::mpsc::Sender};
 
 use config::config_provider::ConfigProvider;
-use net::{utils::{bind_udp_sockets, bind_tcp_listeners}, request::DnsRequest};
-use dns_proto::*;
+use net::{utils::{bind_udp_sockets, bind_tcp_listeners}, request_responder::DnsRequestResponder};
+use dns_proto;
 
 /// The DNS Server that listens for DNS queries over UDP or TCP requests.
 #[derive(Debug)]
@@ -11,7 +11,7 @@ pub struct DnsServer {
   ip6s: Vec<Ipv6Addr>,
   port: u16,
   threads: Vec<thread::JoinHandle<()>>,
-  sender: Sender<DnsRequest>,
+  sender: Sender<DnsRequestResponder>,
 }
 
 impl DnsServer {
@@ -22,7 +22,7 @@ impl DnsServer {
   ///
   /// * `config` - Configuration to be used by the `DnsServer` when started
   /// * `sender` - Channel sender to "emit" `DnsRequest` after been received and parsed by the Server
-  pub fn new<C: ConfigProvider>(config: &C, sender: Sender<DnsRequest>) -> DnsServer {
+  pub fn new<C: ConfigProvider>(config: &C, sender: Sender<DnsRequestResponder>) -> DnsServer {
     DnsServer {
       ip4s: config.ipv4(),
       ip6s: config.ipv6(),
@@ -65,10 +65,10 @@ impl DnsServer {
             Ok((amount, src)) => {
               trace!("Received {} bytes from {}", amount, src);
 
-              match message_from_bytes(&buf) {
+              match dns_proto::message_from_bytes(&buf) {
                 Ok(message) => {
                   let u_sock = thread_udp_sock.try_clone().unwrap();
-                  let dns_request = DnsRequest::new_udp_request(src, message, u_sock);
+                  let dns_request = DnsRequestResponder::from_udp_request(src, message, u_sock);
 
                   thread_udp_sender.send(dns_request).expect("Unable to pass on DNS Request for processing");
                 },

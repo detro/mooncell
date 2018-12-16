@@ -3,7 +3,7 @@ extern crate mooncell;
 
 use std::sync::mpsc::{Sender, Receiver, channel};
 
-use mooncell::{logging, net::{server::DnsServer, request::DnsRequest}, config::{cli::CLI}};
+use mooncell::{logging, net::{server::DnsServer, request_responder::DnsRequestResponder}, config::{cli::CLI}};
 
 fn main() {
   let cli = CLI::new();
@@ -12,7 +12,7 @@ fn main() {
   logging::init(&cli);
   info!("DNS Server starting");
 
-  let (sender, receiver): (Sender<DnsRequest>, Receiver<DnsRequest>) = channel();
+  let (sender, receiver): (Sender<DnsRequestResponder>, Receiver<DnsRequestResponder>) = channel();
 
   let mut server = DnsServer::new(&cli, sender);
   server.start();

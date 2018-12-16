@@ -22,3 +22,4 @@ pub mod doh;
 pub mod net;
 pub mod logging;
 pub mod dns_proto;
+pub mod core;

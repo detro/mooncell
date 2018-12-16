@@ -63,11 +63,11 @@ impl DnsRequestResponder {
     }
   }
 
-  pub fn get_source(&self) -> &SocketAddr {
+  pub fn source(&self) -> &SocketAddr {
     &self.source
   }
 
-  pub fn get_message(&self) -> &DnsMessage {
+  pub fn message(&self) -> &DnsMessage {
     &self.message
   }
 
