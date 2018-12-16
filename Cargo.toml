@@ -3,6 +3,7 @@ name = "mooncell"
 version = "1.0.0"
 description = "A DNS-over-HTTPS server"
 authors = ["Ivan De Marino <detronizator@gmail.com>"]
+#edition = "2018"
 
 [dependencies]
 clap = "2.32.0"
@@ -10,6 +11,8 @@ log = "0.4.6"
 log4rs = "0.8.1"
 
 trust-dns-proto = "0.5.0"
+
+threadpool = "1.7.1"
 
 hyper = "0.12.17"
 hyper-tls = "0.3.1"

@@ -1,5 +1,6 @@
 use std::net::{SocketAddr, TcpStream, UdpSocket};
-use dns_proto::Message;
+use dns_proto::DnsMessage;
+use doh::protocol::DoHResponse;
 
 /// The type of `DnsRequest`
 #[derive(Debug)]
@@ -14,17 +15,17 @@ enum DnsRequestType {
 /// to distinguish of which nature the request is. The _type_ also determines if the fields
 /// `tcp_stream` or `udp_socket` are populated: they are mutually exclusive.
 #[derive(Debug)]
-pub struct DnsRequest {
+pub struct DnsRequestResponder {
   source: SocketAddr,
-  message: Message,
+  message: DnsMessage,
   req_type: DnsRequestType,
   tcp_stream: Option<TcpStream>,
   udp_socket: Option<UdpSocket>,
 }
 
-impl DnsRequest {
+impl DnsRequestResponder {
 
-  /// Constructor for a new `DnsRequest` of type `UdpRequest`
+  /// Constructor for a new `DnsRequestResponder` of type `UdpRequest`
   ///
   /// This is to be used when a UDP request is received.
   ///
@@ -32,9 +33,9 @@ impl DnsRequest {
   ///
   /// * `src` - Socket address source
   /// * `msg` - DNS Message received from the given source
-  /// * `sock` - UDP Socket from which the message was received and a response can be sent
-  pub fn new_udp_request(src: SocketAddr, msg: Message, sock: UdpSocket) -> DnsRequest {
-    DnsRequest {
+  /// * `sock` - UDP Socket from which the Message was received and a response can be sent
+  pub fn from_udp_request(src: SocketAddr, msg: DnsMessage, sock: UdpSocket) -> DnsRequestResponder {
+    DnsRequestResponder {
       source: src,
       message: msg,
       req_type: DnsRequestType::UdpRequest,
@@ -43,23 +44,35 @@ impl DnsRequest {
     }
   }
 
-  /// Constructor for a new `DnsRequest` of type `TcpRequest`
+  /// Constructor for a new `DnsRequestResponder` of type `TcpRequest`
   ///
   /// This is to be used when a TCP request is received.
   ///
   /// # Parameters
   ///
   /// * `src` - Socket address source
-  /// * `msg` - DNS Message received from the given source
-  /// * `stream` - TCP Stream representing a live and established connection with the source
-  pub fn new_tcp_request(src: SocketAddr, msg: Message, stream: TcpStream) -> DnsRequest {
-    DnsRequest {
+  /// * `msg` - DNS DnsMessage received from the given source
+  /// * `strm` - TCP Stream representing a live and established connection with the source
+  pub fn from_tcp_request(src: SocketAddr, msg: DnsMessage, strm: TcpStream) -> DnsRequestResponder {
+    DnsRequestResponder {
       source: src,
       message: msg,
       req_type: DnsRequestType::TcpRequest,
-      tcp_stream: Some(stream),
+      tcp_stream: Some(strm),
       udp_socket: None
     }
+  }
+
+  pub fn get_source(&self) -> &SocketAddr {
+    &self.source
+  }
+
+  pub fn get_message(&self) -> &DnsMessage {
+    &self.message
+  }
+
+  pub fn respond(&self, response: &DoHResponse) {
+    // TODO
   }
 
 }
