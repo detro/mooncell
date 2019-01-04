@@ -6,20 +6,16 @@
 extern crate log4rs;
 
 // JSON serialization/deserialization
+extern crate serde;
 extern crate serde_json;
 #[macro_use] extern crate serde_derive;
-
-// HTTP(S)
-extern crate hyper;
-extern crate hyper_tls;
-extern crate url;
 
 // DNS Protocol
 extern crate trust_dns_proto;
 
 pub mod config;
+pub mod dns;
 pub mod doh;
 pub mod net;
 pub mod logging;
-pub mod dns_proto;
 pub mod core;
