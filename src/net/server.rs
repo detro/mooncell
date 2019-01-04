@@ -2,7 +2,7 @@ use std::{net::{Ipv4Addr, Ipv6Addr}, thread, time::Duration, io::ErrorKind, sync
 
 use config::config_provider::ConfigProvider;
 use net::{utils::{bind_udp_sockets, bind_tcp_listeners}, request_responder::DnsRequestResponder};
-use dns_proto;
+use dns;
 
 /// The DNS Server that listens for DNS queries over UDP or TCP requests.
 #[derive(Debug)]
@@ -65,7 +65,7 @@ impl DnsServer {
             Ok((amount, src)) => {
               trace!("Received {} bytes from {}", amount, src);
 
-              match dns_proto::message_from_bytes(&buf) {
+              match dns::protocol::dns_message_from_bytes(&buf) {
                 Ok(message) => {
                   let u_sock = thread_udp_sock.try_clone().unwrap();
                   let dns_request = DnsRequestResponder::from_udp_request(src, message, u_sock);
