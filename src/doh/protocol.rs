@@ -2,7 +2,7 @@ pub use serde_json::Error as DoHResponseParseError;
 
 use dns::protocol::*;
 use serde_json::{self, Value};
-use std::str::FromStr;
+use std::{str::FromStr, string::ToString};
 
 /// Represents the deserialized response body for an DNS-over-HTTPS request
 ///
@@ -44,6 +44,12 @@ impl FromStr for DoHResponse {
 
   fn from_str(doh_response_json: &str) -> Result<Self, Self::Err> {
     Ok(serde_json::from_str(doh_response_json)?)
+  }
+}
+
+impl ToString for DoHResponse {
+  fn to_string(&self) -> String {
+    serde_json::to_string(self).expect("Could not convert DoHResponse to String")
   }
 }
 
@@ -153,7 +159,7 @@ mod test {
 
     let dns_resp: DoHResponse = dns_resp_json_orig.parse().unwrap();
 
-    assert_eq!(serde_json::to_string(&dns_resp).unwrap(), dns_resp_json_orig);
+    assert_eq!(dns_resp.to_string(), dns_resp_json_orig);
   }
 
 }
