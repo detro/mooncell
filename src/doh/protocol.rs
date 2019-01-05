@@ -1,4 +1,4 @@
-pub use serde_json::Error as DoHResponseParseError;
+pub use serde_json::Error as DoHParseError;
 
 use dns::protocol::*;
 use serde_json::{self, Value};
@@ -28,9 +28,9 @@ pub struct DoHResponse {
   #[serde(rename = "CD")]
   pub checking_disabled: bool,                  //< Whether the client asked to disable DNSSEC
   #[serde(rename = "Question")]
-  pub question: Vec<DoHResponseQuestion>,       //< See `DoHResponseQuestion` above
+  pub question: Vec<DoHQuestion>,       //< See `DoHResponseQuestion` above
   #[serde(rename = "Answer")]
-  pub answer: Vec<DoHResponseAnswer>,           //< See `DoHResponseAnswer` above
+  pub answer: Vec<DoHAnswer>,           //< See `DoHResponseAnswer` above
   #[serde(rename = "Additional", default)]
   pub additional: Vec<Value>,
   #[serde(default)]
@@ -40,7 +40,7 @@ pub struct DoHResponse {
 }
 
 impl FromStr for DoHResponse {
-  type Err = DoHResponseParseError;
+  type Err = DoHParseError;
 
   fn from_str(doh_response_json: &str) -> Result<Self, Self::Err> {
     Ok(serde_json::from_str(doh_response_json)?)
@@ -55,13 +55,13 @@ impl ToString for DoHResponse {
 
 /// Question part of a `DoHResponse` type
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DoHResponseQuestion {
+pub struct DoHQuestion {
   pub name: String,                             //< FQDN with trailing dot
-  #[serde(rename = "type", default = "DoHResponseQuestion::question_type_default", serialize_with = "dns_record_type_serialize", deserialize_with = "dns_record_type_deserialize")]
+  #[serde(rename = "type", default = "DoHQuestion::question_type_default", serialize_with = "dns_record_type_serialize", deserialize_with = "dns_record_type_deserialize")]
   pub question_type: DnsRecordType,             //< Standard DNS RR type (default "A")
 }
 
-impl DoHResponseQuestion {
+impl DoHQuestion {
   fn question_type_default() -> DnsRecordType {
     DnsRecordType::A
   }
@@ -69,16 +69,16 @@ impl DoHResponseQuestion {
 
 /// Answer part of a `DoHResponse` type
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DoHResponseAnswer {
+pub struct DoHAnswer {
   pub name: String,                             //< FQDN with trailing dot
-  #[serde(rename = "type", default = "DoHResponseAnswer::answer_type_default", serialize_with = "dns_record_type_serialize", deserialize_with = "dns_record_type_deserialize")]
+  #[serde(rename = "type", default = "DoHAnswer::answer_type_default", serialize_with = "dns_record_type_serialize", deserialize_with = "dns_record_type_deserialize")]
   pub answer_type: DnsRecordType,               //< Standard DNS RR type (default "A")
   #[serde(rename = "TTL")]
   pub ttl: u32,                                 //< Record's time-to-live in seconds
   pub data: String,                             //< Data for A - IP address as text
 }
 
-impl DoHResponseAnswer {
+impl DoHAnswer {
   fn answer_type_default() -> DnsRecordType {
     DnsRecordType::A
   }
