@@ -1,18 +1,14 @@
+//! Representation of types used by DoH JSON Protocol.
+//!
+//! Based on [Serde JSON](https://crates.io/crates/serde_json).
+
 pub use serde_json::Error as DoHParseError;
 
 use dns::protocol::*;
 use serde_json::{self, Value};
 use std::{str::FromStr, string::ToString};
 
-/// Represents the deserialized response body for an DNS-over-HTTPS request
-///
-/// The JSON Schema is **not** standardised but major players have decided to play friendly
-/// and keep it consistent. A couple of examples:
-///
-/// * [Cloudflare DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https/json-format/)
-/// * [Google DNS-over-HTTPS](https://developers.google.com/speed/public-dns/docs/dns-over-https)
-///
-/// Hopefully, eventually, there will be a standard document to refer to.
+/// Represents the deserialized response body for a DNS-over-HTTPS JSON request
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DoHResponse {
   #[serde(rename = "Status", serialize_with = "dns_response_code_serialize", deserialize_with = "dns_response_code_deserialize")]

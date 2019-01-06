@@ -10,12 +10,18 @@ extern crate serde;
 extern crate serde_json;
 #[macro_use] extern crate serde_derive;
 
+#[macro_use]
+extern crate lazy_static;
+
 // DNS Protocol
 extern crate trust_dns_proto;
 
+// HTTP requests/response
+extern crate http;
+
 pub mod config;
 pub mod dns;
-pub mod doh;
+pub mod doh_json;
 pub mod net;
 pub mod logging;
 pub mod core;
