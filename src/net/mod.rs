@@ -1,4 +1,4 @@
-//! Module concerning with "low level" networking.
+//! Module concerning with "low level" networking
 //!
 //! It provides the UDP and TCP interface of the `server::DnsServer`.
 

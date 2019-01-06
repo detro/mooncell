@@ -1,4 +1,4 @@
-//! Module concerning with configuration
+//! Project configuration schema and providers
 //!
 //! The key component is the trait `ConfigProvider`: anything that provides configuration for
 //! the application to run, must implement it.
