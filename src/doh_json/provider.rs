@@ -11,77 +11,6 @@ use http::{
 
 use std::collections::HashMap;
 
-/// Static `&str` identifier for [Google Public DNS-over-HTTPS](https://developers.google.com/speed/public-dns/docs/dns-over-https) provider
-pub const PROVIDER_NAME_GOOGLE: &'static str = "google";
-/// Static `&str` identifier for [Cloudflare DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https/json-format/) provider
-pub const PROVIDER_NAME_CLOUDFLARE: &'static str = "cloudflare";
-/// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Recommended" provider
-pub const PROVIDER_NAME_QUAD9: &'static str = "quad9";
-/// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Secured" provider
-pub const PROVIDER_NAME_QUAD9_SECURED: &'static str = "quad9-secured";
-/// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Unsecured" provider
-pub const PROVIDER_NAME_QUAD9_UNSECURED: &'static str = "quad9-unsecured";
-/// Static `&str` identifier for [Rubyfish DNS-over-HTTPS](https://www.rubyfish.cn/dns-query) provider (preferable in China)
-pub const PROVIDER_NAME_RUBYFISH: &'static str = "rubyfish";
-/// Static `&str` identifier for [BlahDNS DNS-over-HTTPS](https://blahdns.com/) provider (Preferable in Japan)
-pub const PROVIDER_NAME_BLAHDNS:  &'static str = "blahdns";
-
-lazy_static! {
-  /// Providers of DoH JSON services
-  ///
-  /// They are organised in an `HashMap` so we can programmatically list and/or select them.
-  /// Please look at the constant static `&str` prefixed with "`PROVIDER_NAME_`",
-  /// present in this module, to find what keys exist in this map by default.
-  pub static ref DEFAULT_PROVIDERS: HashMap<&'static str, DoHProvider> = {
-    let mut providers = HashMap::new();
-
-    // Google
-    providers.insert(PROVIDER_NAME_GOOGLE, DoHProvider::from_raw_parts(
-      "https",
-      "dns.google.com",
-      "/resolve"
-    ));
-    // Cloudflare
-    providers.insert(PROVIDER_NAME_CLOUDFLARE, DoHProvider::from_raw_parts(
-      "https",
-      "cloudflare-dns.com",
-      "/dns-query"
-    ));
-    // Quad9 recommended
-    providers.insert(PROVIDER_NAME_QUAD9, DoHProvider::from_raw_parts(
-      "https",
-      "dns.quad9.net",
-      "/dns-query"
-    ));
-    // Quad9 secured
-    providers.insert(PROVIDER_NAME_QUAD9_SECURED, DoHProvider::from_raw_parts(
-      "https",
-      "dns9.quad9.net",
-      "/dns-query"
-    ));
-    // Quad9 unsecured
-    providers.insert(PROVIDER_NAME_QUAD9_UNSECURED, DoHProvider::from_raw_parts(
-      "https",
-      "dns10.quad9.net",
-      "/dns-query"
-    ));
-    // Rubyfish
-    providers.insert(PROVIDER_NAME_RUBYFISH, DoHProvider::from_raw_parts(
-      "https",
-      "dns.rubyfish.cn",
-      "/dns-query"
-    ));
-    // BlahDNS
-    providers.insert(PROVIDER_NAME_BLAHDNS, DoHProvider::from_raw_parts(
-      "https",
-      "doh-de.blahdns.com",
-      "/dns-query"
-    ));
-
-    providers
-  };
-}
-
 // TODO Add support for optional parameters: hopefully Google and the others have compatible,
 //  optional parameters
 
@@ -123,6 +52,78 @@ impl DoHProvider {
       .method(Method::GET)
       .uri(uri)
       .body(())
+  }
+
+  /// Static `&str` identifier for [Google Public DNS-over-HTTPS](https://developers.google.com/speed/public-dns/docs/dns-over-https) provider
+  pub const PROVIDER_NAME_GOOGLE: &'static str = "google";
+  /// Static `&str` identifier for [Cloudflare DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https/json-format/) provider
+  pub const PROVIDER_NAME_CLOUDFLARE: &'static str = "cloudflare";
+  /// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Recommended" provider
+  pub const PROVIDER_NAME_QUAD9: &'static str = "quad9";
+  /// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Secured" provider
+  pub const PROVIDER_NAME_QUAD9_SECURED: &'static str = "quad9-secured";
+  /// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Unsecured" provider
+  pub const PROVIDER_NAME_QUAD9_UNSECURED: &'static str = "quad9-unsecured";
+  /// Static `&str` identifier for [Rubyfish DNS-over-HTTPS](https://www.rubyfish.cn/dns-query) provider (preferable in China)
+  pub const PROVIDER_NAME_RUBYFISH: &'static str = "rubyfish";
+  /// Static `&str` identifier for [BlahDNS DNS-over-HTTPS](https://blahdns.com/) provider (Preferable in Japan)
+  pub const PROVIDER_NAME_BLAHDNS:  &'static str = "blahdns";
+
+  /// Default providers of DoH JSON services
+  ///
+  /// They are organised in an `HashMap` so we can programmatically list and/or select them.
+  /// Please look at the constant static `&str` prefixed with "`PROVIDER_NAME_`",
+  /// present in this module, to find what keys exist in this map by default.
+  ///
+  /// It's good design to instantiate this once at launch and keep it around for the life
+  /// of the process: it would be wasteful to keep re-instantiating all those strings.
+  pub fn defaults() -> HashMap<&'static str, DoHProvider> {
+    let mut providers = HashMap::new();
+
+    // Google
+    providers.insert(Self::PROVIDER_NAME_GOOGLE, DoHProvider::from_raw_parts(
+      "https",
+      "dns.google.com",
+      "/resolve"
+    ));
+    // Cloudflare
+    providers.insert(Self::PROVIDER_NAME_CLOUDFLARE, DoHProvider::from_raw_parts(
+      "https",
+      "cloudflare-dns.com",
+      "/dns-query"
+    ));
+    // Quad9 recommended
+    providers.insert(Self::PROVIDER_NAME_QUAD9, DoHProvider::from_raw_parts(
+      "https",
+      "dns.quad9.net",
+      "/dns-query"
+    ));
+    // Quad9 secured
+    providers.insert(Self::PROVIDER_NAME_QUAD9_SECURED, DoHProvider::from_raw_parts(
+      "https",
+      "dns9.quad9.net",
+      "/dns-query"
+    ));
+    // Quad9 unsecured
+    providers.insert(Self::PROVIDER_NAME_QUAD9_UNSECURED, DoHProvider::from_raw_parts(
+      "https",
+      "dns10.quad9.net",
+      "/dns-query"
+    ));
+    // Rubyfish
+    providers.insert(Self::PROVIDER_NAME_RUBYFISH, DoHProvider::from_raw_parts(
+      "https",
+      "dns.rubyfish.cn",
+      "/dns-query"
+    ));
+    // BlahDNS
+    providers.insert(Self::PROVIDER_NAME_BLAHDNS, DoHProvider::from_raw_parts(
+      "https",
+      "doh-de.blahdns.com",
+      "/dns-query"
+    ));
+
+    providers
   }
 
 }
