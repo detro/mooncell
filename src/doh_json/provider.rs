@@ -1,57 +1,123 @@
 //! DoH JSON provider(s)
 
-use dns::protocol::DnsMessage;
+use dns::protocol::DnsQuery;
 
 use http::{
   method::Method,
+  version::Version,
   uri::{Builder as UriBuilder, Scheme, Authority, PathAndQuery},
   request::{Request, Builder as RequestBuilder},
+  header::{HeaderMap, self},
   Result as HttpResult,
 };
 
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr, default::Default};
 
 // TODO Add support for optional parameters: hopefully Google and the others have compatible,
 //  optional parameters
 
-/// A provider of DNS-over-HTTPS services
+/// Describes a provider of DNS-over-HTTPS services
+#[derive(Debug, Clone)]
 pub struct DoHProvider {
   scheme: Scheme,
   authority: Authority,
   path_query: PathAndQuery,
-  // TODO Add mandatory headers like `accept: application/dns-json` for Cloudflare
+  headers: HeaderMap,
 }
 
 impl DoHProvider {
 
+  /// Constructor from "raw" parts
+  ///
+  /// # Parameters
+  ///
+  /// * `raw_scheme` - `&str` representing the scheme of a URI (ex. "http", "https" or others)
+  /// * `raw_authority` - `&str` representing the authority of a URI (ex. "example.com" or "other-example.com:8081")
+  /// * `raw_path_query` - `&str` representing the path and query of a URI (ex. "/path/to/file?q1=v1&q2=v2")
   pub fn from_raw_parts(raw_scheme: &str, raw_authority: &str, raw_path_query: &str) -> DoHProvider {
     DoHProvider::from_parts(
       raw_scheme.parse().unwrap(),
       raw_authority.parse().unwrap(),
-      raw_path_query.parse().unwrap()
+      raw_path_query.parse().unwrap(),
+      HeaderMap::default()
     )
   }
 
-  pub fn from_parts(scheme: Scheme, authority: Authority, path_query: PathAndQuery) -> DoHProvider {
+  /// Constructor from "raw" parts that allows to provide headers
+  ///
+  /// # Parameters
+  ///
+  /// * `raw_scheme` - `&str` representing the scheme of a URI (ex. "http", "https" or others)
+  /// * `raw_authority` - `&str` representing the authority of a URI (ex. "example.com" or "other-example.com:8081")
+  /// * `raw_path_query` - `&str` representing the path and query of a URI (ex. "/path/to/file?q1=v1&q2=v2")
+  /// * `headers` - an `HeaderMap` as defined by the `http` crate
+  pub fn from_raw_parts_with_headers(raw_scheme: &str, raw_authority: &str, raw_path_query: &str, headers: HeaderMap) -> DoHProvider {
+    DoHProvider::from_parts(
+      raw_scheme.parse().unwrap(),
+      raw_authority.parse().unwrap(),
+      raw_path_query.parse().unwrap(),
+      headers
+    )
+  }
+
+  /// Constructor from parts
+  ///
+  /// # Parameters
+  ///
+  /// * `scheme` - `Scheme` of a URI (ex. "http", "https" or others)
+  /// * `authority` - `Authority` of a URI (ex. "example.com" or "other-example.com:8081")
+  /// * `path_query` - `PathAndQuery` of a URI (ex. "/path/to/file?q1=v1&q2=v2")
+  /// * `headers` - an `HeaderMap` as defined by the `http` crate
+  pub fn from_parts(scheme: Scheme, authority: Authority, path_query: PathAndQuery, headers: HeaderMap) -> DoHProvider {
     DoHProvider {
       scheme,
       authority,
       path_query,
+      headers
     }
   }
 
-  pub fn build_request(&mut self, dns_msg: &DnsMessage) -> HttpResult<Request<()>> {
+  /// Builds an HTTP request combining the information of the `DoHProvider` with the given `DnsQuery`
+  ///
+  /// This is the important part of this type: taking a "standard" `DnsQuery` and turning it into
+  /// an actual HTTP request that we can send to the give `DoHProvider` and, hopefilly, get
+  /// a DNS resolution back.
+  ///
+  /// # Parameters
+  ///
+  /// * `dns_query` - `DnsQuery` that we need to turn into an HTTP request towards the Provider
+  pub fn build_request(&mut self, dns_query: &DnsQuery) -> HttpResult<Request<()>> {
+    // Prepare Path and Query parts of the request, combining the Provider "required" parts
+    // with the actual DNS Query
+    let query_type: &str = dns_query.query_type().into();
+    let query_name = dns_query.name().to_string();
+    let path_query = if let Some(provider_required_query) = self.path_query.query() {
+      PathAndQuery::from_str(&format!("{}?type={}&name={}&{}", self.path_query.path(), query_type, query_name, provider_required_query))?
+    } else {
+      PathAndQuery::from_str(&format!("{}?type={}&name={}", self.path_query.path(), query_type, query_name))?
+    };
+
+    // Compose the request URI by assembling all it's parts
     let uri = UriBuilder::new()
       .scheme(self.scheme.clone())
       .authority(self.authority.clone())
-      // TODO Add query parameters 'type' and 'name' and any other required to describe `dns_msg`
-      .path_and_query(self.path_query.clone())
+      .path_and_query(path_query)
       .build()?;
 
-    RequestBuilder::new()
+    // Using a Request builder to assemble the final HTTP Request
+    let mut req_builder = RequestBuilder::new();
+    // Adding some defaults as well as URI
+    req_builder
+      .version(Version::HTTP_11)
       .method(Method::GET)
-      .uri(uri)
-      .body(())
+      .uri(uri);
+
+    // Adding extra headers (if any)
+    for (hkey, hval) in self.headers.iter() {
+      req_builder.header(hkey, hval);
+    }
+
+    req_builder.body(())
   }
 
   /// Static `&str` identifier for [Google Public DNS-over-HTTPS](https://developers.google.com/speed/public-dns/docs/dns-over-https) provider
@@ -87,10 +153,13 @@ impl DoHProvider {
       "/resolve"
     ));
     // Cloudflare
-    providers.insert(Self::PROVIDER_NAME_CLOUDFLARE, DoHProvider::from_raw_parts(
+    let mut cloudflare_headers = HeaderMap::with_capacity(1);
+    cloudflare_headers.insert(header::ACCEPT, "application/dns-json".parse().unwrap());
+    providers.insert(Self::PROVIDER_NAME_CLOUDFLARE, DoHProvider::from_raw_parts_with_headers(
       "https",
       "cloudflare-dns.com",
-      "/dns-query"
+      "/dns-query",
+      cloudflare_headers
     ));
     // Quad9 recommended
     providers.insert(Self::PROVIDER_NAME_QUAD9, DoHProvider::from_raw_parts(
@@ -128,34 +197,25 @@ impl DoHProvider {
 
 }
 
-// -------------------------------------------------------------------------------- Request building
-//pub fn build_request<'a>(provider: &'a DoHProvider, query_name: &str, query_type: &str) -> Request<Body> {
-//  // Append to the URL required by the Provider, the query parameters
-//  let mut url = provider.url();
-//  url.query_pairs_mut()
-//    .append_pair("name", query_name)
-//    .append_pair("type", query_type);
-//
-//  // Assemble the final request
-//  Request::builder()
-//    .method(provider.method.clone())
-//    .uri(url.to_string())
-//    .body(Body::empty())
-//    .unwrap()
-//}
+impl Default for DoHProvider {
 
-// ------------------------------------------------------------------------------------------- Tests
-//#[cfg(test)]
-//mod test {
-//  use super::*;
-//  use http::Version;
-//
-//  #[test]
-//  fn should_produce_default_providers() {
-//    let def_providers = DoHProvider::defaults();
-//
-//    let google_provider = def_providers.get(DoHProvider::DEFAULT_KEY_GOOGLE).unwrap();
-//    assert_eq!(google_provider.host, "dns.google.com");
+  /// Default `DoHProvider` is "`cloudflare`"
+  ///
+  /// It's OK to pick sides. Plus, Google has already everything.
+  fn default() -> Self {
+    DoHProvider::defaults().get(DoHProvider::PROVIDER_NAME_CLOUDFLARE).unwrap().to_owned()
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use super::*;
+
+  #[test]
+  fn should_return_a_default_provider() {
+    let def_provider: DoHProvider = DoHProvider::default();
+
+//    assert_eq!(def_provider.re, );
 //    assert_eq!(google_provider.path, "resolve");
 //    assert_eq!(google_provider.mandatory_query.len(), 0);
 //    assert_eq!(google_provider.url().to_string(), "https://dns.google.com/resolve");
@@ -167,7 +227,7 @@ impl DoHProvider {
 //    assert_eq!(cloudflare_provider.mandatory_query[0].0, "ct");
 //    assert_eq!(cloudflare_provider.mandatory_query[0].1, "application/dns-json");
 //    assert_eq!(cloudflare_provider.url().to_string(), "https://cloudflare-dns.com/dns-query?ct=application%2Fdns-json");
-//  }
+  }
 //
 //  #[test]
 //  fn should_create_request() {
@@ -187,4 +247,4 @@ impl DoHProvider {
 //    assert_eq!(request.body(), &());
 //    assert!(request.headers().is_empty());
 //  }
-//}
+}

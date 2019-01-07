@@ -13,6 +13,7 @@ pub use trust_dns_proto::{
   op::{
     header::MessageType as DnsMessageType,
     message::Message as DnsMessage,
+    query::Query as DnsQuery,
     op_code::OpCode as DnsOpCode,
     response_code::ResponseCode as DnsResponseCode,
   },
