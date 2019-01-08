@@ -1,4 +1,4 @@
-workflow "Quickstart" {
+workflow "Format, Clippy, Test, Build release" {
   on = "push"
   resolves = ["Quickstart"]
 }
