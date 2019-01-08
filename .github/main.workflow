@@ -4,5 +4,5 @@ workflow "On Push: build and test" {
 }
 
 action "Build and Test" {
-  uses = "./.github/actions/build-and-test@master"
+  uses = "detro/mooncell/.github/actions/build-and-test@master"
 }
