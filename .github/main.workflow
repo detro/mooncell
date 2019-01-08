@@ -1,8 +1,8 @@
-workflow "Format, Clippy, Test, Build release" {
+workflow "On Push: build and test" {
   on = "push"
-  resolves = ["Quickstart"]
+  resolves = ["Build and Test"]
 }
 
-action "Quickstart" {
-  uses = "icepuma/rust-github-actions/quickstart@master"
+action "Build and Test" {
+  uses = "./.github/actions/build-and-test@master"
 }
