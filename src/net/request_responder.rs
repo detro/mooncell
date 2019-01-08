@@ -71,7 +71,7 @@ impl DnsRequestResponder {
     &self.message
   }
 
-  pub fn respond(&self, response: DoHResponse) {
+  pub fn respond(&self, _response: DoHResponse) {
     // TODO
 
     match &self.req_type {
@@ -97,6 +97,7 @@ impl DnsRequestResponder {
 //}
 
 #[cfg(test)]
+#[allow(unused_imports)]
 mod test {
   use super::*;
 

@@ -1,7 +1,7 @@
 use std::{net::{Ipv4Addr, Ipv6Addr}, thread, time::Duration, io::ErrorKind, sync::mpsc::Sender};
 
 use config::config_provider::ConfigProvider;
-use net::{utils::{bind_udp_sockets, bind_tcp_listeners}, request_responder::DnsRequestResponder};
+use net::{utils::{bind_udp_sockets, /*bind_tcp_listeners*/}, request_responder::DnsRequestResponder};
 use dns;
 
 /// The DNS Server that listens for DNS queries over UDP or TCP requests.

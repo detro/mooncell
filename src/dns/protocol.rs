@@ -21,7 +21,8 @@ pub use trust_dns_proto::{
     record_type::RecordType as DnsRecordType,
     dnssec::rdata::DNSSECRecordType as DnsDNSSECRecordType,
     dns_class::DNSClass as DnsClass,
-  }
+    domain::Name as DnsDomainName,
+  },
 };
 
 use trust_dns_proto::serialize::binary::{BinDecodable, BinEncodable};
