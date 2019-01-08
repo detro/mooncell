@@ -1,13 +1,13 @@
 //! DoH JSON provider(s)
 
-use dns::protocol::DnsQuery;
+use dns::protocol::*;
 
 use http::{
   method::Method,
   version::Version,
   uri::{Builder as UriBuilder, Scheme, Authority, PathAndQuery},
-  request::{Request, Builder as RequestBuilder},
   header::{HeaderMap, self},
+  request::{Request, Builder as RequestBuilder},
   Result as HttpResult,
 };
 
@@ -86,7 +86,7 @@ impl DoHProvider {
   /// # Parameters
   ///
   /// * `dns_query` - `DnsQuery` that we need to turn into an HTTP request towards the Provider
-  pub fn build_request(&mut self, dns_query: &DnsQuery) -> HttpResult<Request<()>> {
+  pub fn build_request(&self, dns_query: &DnsQuery) -> HttpResult<Request<()>> {
     // Prepare Path and Query parts of the request, combining the Provider "required" parts
     // with the actual DNS Query
     let query_type: &str = dns_query.query_type().into();
@@ -212,39 +212,122 @@ mod test {
   use super::*;
 
   #[test]
-  fn should_return_a_default_provider() {
-    let def_provider: DoHProvider = DoHProvider::default();
+  fn should_provide_cloudflare_provider() {
+    let example_query = DnsQuery::query(DnsDomainName::from_str("ivandemarino.me.").unwrap(), DnsRecordType::AAAA);
 
-//    assert_eq!(def_provider.re, );
-//    assert_eq!(google_provider.path, "resolve");
-//    assert_eq!(google_provider.mandatory_query.len(), 0);
-//    assert_eq!(google_provider.url().to_string(), "https://dns.google.com/resolve");
-//
-//    let cloudflare_provider = def_providers.get(DoHProvider::DEFAULT_KEY_CLOUDFLARE).unwrap();
-//    assert_eq!(cloudflare_provider.host, "cloudflare-dns.com");
-//    assert_eq!(cloudflare_provider.path, "dns-query");
-//    assert_eq!(cloudflare_provider.mandatory_query.len(), 1);
-//    assert_eq!(cloudflare_provider.mandatory_query[0].0, "ct");
-//    assert_eq!(cloudflare_provider.mandatory_query[0].1, "application/dns-json");
-//    assert_eq!(cloudflare_provider.url().to_string(), "https://cloudflare-dns.com/dns-query?ct=application%2Fdns-json");
+    let default_provider: DoHProvider = DoHProvider::default();
+    let cloudflare_provider = DoHProvider::defaults().get(DoHProvider::PROVIDER_NAME_CLOUDFLARE).unwrap().to_owned();
+
+    // What's going on here? We are testing the same thing twice, as Cloudflare is also the default provider
+    let providers = vec![default_provider, cloudflare_provider];
+
+    for provider in providers {
+      let http_request = provider.build_request(&example_query).unwrap();
+      assert_eq!(http_request.method(), Method::GET);
+      assert_eq!(http_request.version(), Version::HTTP_11);
+      assert_eq!(http_request.uri().to_string(), "https://cloudflare-dns.com/dns-query?type=AAAA&name=ivandemarino.me.");
+      assert_eq!(http_request.extensions().get::<bool>(), None);
+      assert!(http_request.headers().contains_key(header::ACCEPT));
+      assert_eq!(http_request.headers().get(header::ACCEPT).unwrap(), &"application/dns-json");
+      assert_eq!(http_request.headers().len(), 1);
+      assert_eq!(http_request.body(), &());
+    }
   }
-//
-//  #[test]
-//  fn should_create_request() {
-//    let default_providers = DoHProvider::defaults();
-//
-//    let request = build_request(default_providers.get(DoHProvider::DEFAULT_KEY_GOOGLE).unwrap(), "newrelic", "A");
-//    assert_eq!(request.version(), Version::HTTP_11);
-//    assert_eq!(request.method(), &Method::GET);
-//    assert_eq!(request.uri(), "https://dns.google.com/resolve?name=newrelic&type=A");
-//    assert_eq!(request.body(), &());
-//    assert!(request.headers().is_empty());
-//
-//    let request = build_request(default_providers.get(DoHProvider::DEFAULT_KEY_CLOUDFLARE).unwrap(), "newrelic", "A");
-//    assert_eq!(request.version(), Version::HTTP_11);
-//    assert_eq!(request.method(), &Method::GET);
-//    assert_eq!(request.uri(), "https://cloudflare-dns.com/dns-query?ct=application%2Fdns-json&name=newrelic&type=A");
-//    assert_eq!(request.body(), &());
-//    assert!(request.headers().is_empty());
-//  }
+
+  #[test]
+  fn should_provide_google_provider() {
+    let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
+    let default_providers = DoHProvider::defaults();
+
+    let provider = default_providers.get(DoHProvider::PROVIDER_NAME_GOOGLE).unwrap();
+
+    let http_request = provider.build_request(&example_query).unwrap();
+    assert_eq!(http_request.method(), Method::GET);
+    assert_eq!(http_request.version(), Version::HTTP_11);
+    assert_eq!(http_request.uri().to_string(), "https://dns.google.com/resolve?type=A&name=github.com.");
+    assert_eq!(http_request.extensions().get::<bool>(), None);
+    assert_eq!(http_request.headers().len(), 0);
+    assert_eq!(http_request.body(), &());
+  }
+
+  #[test]
+  fn should_provide_quad9_provider() {
+    let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
+    let default_providers = DoHProvider::defaults();
+
+    let provider = default_providers.get(DoHProvider::PROVIDER_NAME_QUAD9).unwrap();
+
+    let http_request = provider.build_request(&example_query).unwrap();
+    assert_eq!(http_request.method(), Method::GET);
+    assert_eq!(http_request.version(), Version::HTTP_11);
+    assert_eq!(http_request.uri().to_string(), "https://dns.quad9.net/dns-query?type=A&name=github.com.");
+    assert_eq!(http_request.extensions().get::<bool>(), None);
+    assert_eq!(http_request.headers().len(), 0);
+    assert_eq!(http_request.body(), &());
+  }
+
+  #[test]
+  fn should_provide_quad9_secured_provider() {
+    let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
+    let default_providers = DoHProvider::defaults();
+
+    let provider = default_providers.get(DoHProvider::PROVIDER_NAME_QUAD9_SECURED).unwrap();
+
+    let http_request = provider.build_request(&example_query).unwrap();
+    assert_eq!(http_request.method(), Method::GET);
+    assert_eq!(http_request.version(), Version::HTTP_11);
+    assert_eq!(http_request.uri().to_string(), "https://dns9.quad9.net/dns-query?type=A&name=github.com.");
+    assert_eq!(http_request.extensions().get::<bool>(), None);
+    assert_eq!(http_request.headers().len(), 0);
+    assert_eq!(http_request.body(), &());
+  }
+
+  #[test]
+  fn should_provide_quad9_unsecured_provider() {
+    let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
+    let default_providers = DoHProvider::defaults();
+
+    let provider = default_providers.get(DoHProvider::PROVIDER_NAME_QUAD9_UNSECURED).unwrap();
+
+    let http_request = provider.build_request(&example_query).unwrap();
+    assert_eq!(http_request.method(), Method::GET);
+    assert_eq!(http_request.version(), Version::HTTP_11);
+    assert_eq!(http_request.uri().to_string(), "https://dns10.quad9.net/dns-query?type=A&name=github.com.");
+    assert_eq!(http_request.extensions().get::<bool>(), None);
+    assert_eq!(http_request.headers().len(), 0);
+    assert_eq!(http_request.body(), &());
+  }
+
+  #[test]
+  fn should_provide_rubyfish_provider() {
+    let example_query = DnsQuery::query(DnsDomainName::from_str("apple.com.").unwrap(), DnsRecordType::A);
+    let default_providers = DoHProvider::defaults();
+
+    let provider = default_providers.get(DoHProvider::PROVIDER_NAME_RUBYFISH).unwrap();
+
+    let http_request = provider.build_request(&example_query).unwrap();
+    assert_eq!(http_request.method(), Method::GET);
+    assert_eq!(http_request.version(), Version::HTTP_11);
+    assert_eq!(http_request.uri().to_string(), "https://dns.rubyfish.cn/dns-query?type=A&name=apple.com.");
+    assert_eq!(http_request.extensions().get::<bool>(), None);
+    assert_eq!(http_request.headers().len(), 0);
+    assert_eq!(http_request.body(), &());
+  }
+
+  #[test]
+  fn should_provide_blahdns_provider() {
+    let example_query = DnsQuery::query(DnsDomainName::from_str("apple.com.").unwrap(), DnsRecordType::A);
+    let default_providers = DoHProvider::defaults();
+
+    let provider = default_providers.get(DoHProvider::PROVIDER_NAME_BLAHDNS).unwrap();
+
+    let http_request = provider.build_request(&example_query).unwrap();
+    assert_eq!(http_request.method(), Method::GET);
+    assert_eq!(http_request.version(), Version::HTTP_11);
+    assert_eq!(http_request.uri().to_string(), "https://doh-de.blahdns.com/dns-query?type=A&name=apple.com.");
+    assert_eq!(http_request.extensions().get::<bool>(), None);
+    assert_eq!(http_request.headers().len(), 0);
+    assert_eq!(http_request.body(), &());
+  }
+
 }
