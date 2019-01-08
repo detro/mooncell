@@ -66,11 +66,15 @@ impl DnsServer {
               trace!("Received {} bytes from {}", amount, src);
 
               match dns::protocol::dns_message_from_bytes(&buf) {
-                Ok(message) => {
-                  let u_sock = thread_udp_sock.try_clone().unwrap();
-                  let dns_request = DnsRequestResponder::from_udp_request(src, message, u_sock);
+                Ok(dns_message) => {
+                  if dns_message.message_type() == dns::protocol::DnsMessageType::Query {
+                    let u_sock = thread_udp_sock.try_clone().unwrap();
+                    let dns_request = DnsRequestResponder::from_udp_request(src, dns_message, u_sock);
 
-                  thread_udp_sender.send(dns_request).expect("Unable to pass on DNS Request for processing");
+                    thread_udp_sender.send(dns_request).expect("Unable to pass on DNS Request for processing");
+                  } else {
+                    warn!("Received unexpected DNS message of type {:?}: ignoring", dns_message.message_type());
+                  }
                 },
                 Err(e) => error!("Unable to parse DNS message: {}", e)
               };
