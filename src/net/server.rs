@@ -1,4 +1,4 @@
-use std::{net::{Ipv4Addr, Ipv6Addr}, thread, time::Duration, io::ErrorKind, sync::mpsc::Sender};
+use std::{net::{Ipv4Addr, Ipv6Addr, UdpSocket}, thread, time::Duration, io::ErrorKind, sync::mpsc::Sender};
 
 use config::config_provider::ConfigProvider;
 use net::{utils::{bind_udp_sockets, /*bind_tcp_listeners*/}, request_responder::DnsRequestResponder};
@@ -37,14 +37,34 @@ impl DnsServer {
   /// The server binds to the IPs and ports (based on the given configuration) and
   /// it spawns a dedicated thread per binding.
   pub fn start(&mut self) {
-    // TODO Add support for TCP
+    // Bind TCP listeners and start dedicated threads to handle requests (one thread per listener)
+    // TODO Implement TCP support
 //    let tcp_listeners = bind_tcp_listeners(&self.ip4s, &self.ip6s, &self.port);
+//    let threads = self.start_tcp_threads(tcp_listeners);
 
-    // Bind UDP sockets
+    // Bind UDP sockets and start dedicated threads to listen for requests (one thread per socket)
     let udp_sockets = bind_udp_sockets(&self.ip4s, &self.ip6s, &self.port);
+    let threads = self.start_udp_threads(udp_sockets);
 
+    self.threads.extend(threads);
+  }
+
+  /// Spawn threads dedicated to handle `UdpSocket` traffic
+  ///
+  /// This method will allocate 1 `Thread` per `UdpSocket` given as input.
+  /// For the focused reader this sounds like
+  /// _"we are accepting just 1 UDP request at a time per bound socket"_, but this is how
+  /// UDP works.
+  ///
+  /// That's why the purpose of these threads is to receive the request, deserialize it
+  /// into a `DnsMessage` and then emit on the given internal `self.sender` channel for
+  /// further processing.
+  ///
+  /// The consumption of those emitted entities can then be parallelized as desired/needed,
+  /// to speed things up.
+  fn start_udp_threads(&mut self, udp_sockets: Vec<UdpSocket>) -> Vec<thread::JoinHandle<()>> {
     // Map the bound sockets to threads, so we can later on use their `JoinHandle` to terminate them
-    let threads: Vec<thread::JoinHandle<()>> = udp_sockets.iter().enumerate().map(|(idx, udp_sock)| {
+    udp_sockets.iter().enumerate().map(|(idx, udp_sock)| {
       // This creates a clone that refers to the underlying socket, but that we can use
       // to move to another thread.
       let thread_udp_sock = udp_sock.try_clone().unwrap();
@@ -93,9 +113,7 @@ impl DnsServer {
           }
         }
       }).expect("Unable to spawn thread for UDP bound socket")
-    }).collect();
-
-    self.threads.extend(threads);
+    }).collect()
   }
 
   /// Await that the DnsServer terminates and drop it
@@ -108,8 +126,11 @@ impl DnsServer {
     }
   }
 
+  /// Stop the server
+  ///
+  /// TODO Implement ability to 'stop' the server (by stopping the threads)
   pub fn stop(&mut self) {
-    // TODO Implement ability to 'stop' the server (by stopping the threads)
+    unimplemented!();
   }
 
 }
