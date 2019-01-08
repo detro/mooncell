@@ -1,3 +1,5 @@
+//! Command Line Interface implementation of `ConfigProvider`
+
 use clap::{App, Arg, ArgMatches};
 use log::LevelFilter;
 use std::{net::{Ipv4Addr, Ipv6Addr}, fmt};

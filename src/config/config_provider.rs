@@ -1,3 +1,5 @@
+//! Configuration Provider trait (schema)
+
 use log::LevelFilter;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
