@@ -10,7 +10,7 @@ use std::{str::FromStr, string::ToString};
 
 /// Represents the deserialized response body for a DNS-over-HTTPS JSON request
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DoHResponse {
+pub struct DoHJsonResponse {
   #[serde(rename = "Status", serialize_with = "dns_response_code_serialize", deserialize_with = "dns_response_code_deserialize")]
   pub response_code: DnsResponseCode,
   #[serde(rename = "TC")]
@@ -24,9 +24,9 @@ pub struct DoHResponse {
   #[serde(rename = "CD")]
   pub checking_disabled: bool,                  //< Whether the client asked to disable DNSSEC
   #[serde(rename = "Question")]
-  pub question: Vec<DoHQuestion>,       //< See `DoHResponseQuestion` above
+  pub question: Vec<DoHJsonQuestion>,       //< See `DoHResponseQuestion` above
   #[serde(rename = "Answer")]
-  pub answer: Vec<DoHAnswer>,           //< See `DoHResponseAnswer` above
+  pub answer: Vec<DoHJsonAnswer>,           //< See `DoHResponseAnswer` above
   #[serde(rename = "Additional", default)]
   pub additional: Vec<Value>,
   #[serde(default)]
@@ -35,7 +35,7 @@ pub struct DoHResponse {
   pub comment: String,
 }
 
-impl FromStr for DoHResponse {
+impl FromStr for DoHJsonResponse {
   type Err = DoHParseError;
 
   fn from_str(doh_response_json: &str) -> Result<Self, Self::Err> {
@@ -43,7 +43,7 @@ impl FromStr for DoHResponse {
   }
 }
 
-impl ToString for DoHResponse {
+impl ToString for DoHJsonResponse {
   fn to_string(&self) -> String {
     serde_json::to_string(self).expect("Could not convert DoHResponse to String")
   }
@@ -51,13 +51,13 @@ impl ToString for DoHResponse {
 
 /// Question part of a `DoHResponse` type
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DoHQuestion {
+pub struct DoHJsonQuestion {
   pub name: String,                             //< FQDN with trailing dot
-  #[serde(rename = "type", default = "DoHQuestion::question_type_default", serialize_with = "dns_record_type_serialize", deserialize_with = "dns_record_type_deserialize")]
+  #[serde(rename = "type", default = "DoHJsonQuestion::question_type_default", serialize_with = "dns_record_type_serialize", deserialize_with = "dns_record_type_deserialize")]
   pub question_type: DnsRecordType,             //< Standard DNS RR type (default "A")
 }
 
-impl DoHQuestion {
+impl DoHJsonQuestion {
   fn question_type_default() -> DnsRecordType {
     DnsRecordType::A
   }
@@ -65,16 +65,16 @@ impl DoHQuestion {
 
 /// Answer part of a `DoHResponse` type
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DoHAnswer {
+pub struct DoHJsonAnswer {
   pub name: String,                             //< FQDN with trailing dot
-  #[serde(rename = "type", default = "DoHAnswer::answer_type_default", serialize_with = "dns_record_type_serialize", deserialize_with = "dns_record_type_deserialize")]
+  #[serde(rename = "type", default = "DoHJsonAnswer::answer_type_default", serialize_with = "dns_record_type_serialize", deserialize_with = "dns_record_type_deserialize")]
   pub answer_type: DnsRecordType,               //< Standard DNS RR type (default "A")
   #[serde(rename = "TTL")]
   pub ttl: u32,                                 //< Record's time-to-live in seconds
   pub data: String,                             //< Data for A - IP address as text
 }
 
-impl DoHAnswer {
+impl DoHJsonAnswer {
   fn answer_type_default() -> DnsRecordType {
     DnsRecordType::A
   }
@@ -123,7 +123,7 @@ mod test {
       "edns_client_subnet": "12.34.56.78/0"
     }"#;
 
-    let dns_resp = dns_resp_json.parse::<DoHResponse>().unwrap();
+    let dns_resp = dns_resp_json.parse::<DoHJsonResponse>().unwrap();
 
     assert_eq!(dns_resp.response_code, DnsResponseCode::NoError);
     assert_eq!(dns_resp.truncated, false);
@@ -153,7 +153,7 @@ mod test {
   fn should_serialize_response() {
     let dns_resp_json_orig = r#"{"Status":0,"TC":false,"RD":true,"RA":true,"AD":false,"CD":false,"Question":[{"name":"apple.com.","type":1}],"Answer":[{"name":"apple.com.","type":1,"TTL":3599,"data":"17.178.96.59"},{"name":"apple.com.","type":1,"TTL":3599,"data":"17.172.224.47"},{"name":"apple.com.","type":1,"TTL":3599,"data":"17.142.160.59"}],"Additional":[],"edns_client_subnet":"12.34.56.78/0","Comment":""}"#;
 
-    let dns_resp: DoHResponse = dns_resp_json_orig.parse().unwrap();
+    let dns_resp: DoHJsonResponse = dns_resp_json_orig.parse().unwrap();
 
     assert_eq!(dns_resp.to_string(), dns_resp_json_orig);
   }

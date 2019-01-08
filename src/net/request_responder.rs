@@ -1,6 +1,6 @@
 use std::net::{SocketAddr, TcpStream, UdpSocket};
 use dns::protocol::DnsMessage;
-use doh_json::protocol::DoHResponse;
+use doh_json::protocol::DoHJsonResponse;
 
 /// The type of `DnsRequest`
 #[derive(Debug)]
@@ -71,7 +71,7 @@ impl DnsRequestResponder {
     &self.message
   }
 
-  pub fn respond(&self, _response: DoHResponse) {
+  pub fn respond(&self, _response: DoHJsonResponse) {
     // TODO
 
     match &self.req_type {
