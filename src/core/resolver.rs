@@ -1,4 +1,4 @@
-//! `DnsMessage` resolution
+//! Trait definition for `DnsMessage` resolution via DNS-over-HTTPS
 
 use dns::protocol::{DnsMessage, DnsMessageType};
 use http::Error as HttpError;
@@ -34,14 +34,14 @@ impl error::Error for ResolutionError {
 impl convert::From<HttpError> for ResolutionError {
   fn from(http_error: HttpError) -> Self {
     ResolutionError {
-      desc: "Issue with underlying HTTP",
+      desc: "Failed to execute HTTP request",
       src: Some(http_error)
     }
   }
 }
 
-/// A _resolver_ of `DnsMessage` requests
-pub trait Resolver {
+/// Trait defining a _resolver_ of `DnsMessage` queries
+pub trait DoHResolver {
 
   /// Resolves a DNS Query and returns a DNS Response
   ///
