@@ -3,7 +3,7 @@
 use dns::protocol::{DnsMessage, DnsMessageType};
 use http::Error as HttpError;
 
-use std::{fmt, error};
+use std::{fmt, error, convert};
 
 type Result<T> = std::result::Result<T, ResolutionError>;
 
@@ -18,15 +18,24 @@ pub struct ResolutionError {
 
 impl fmt::Display for ResolutionError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "ResolutionError: {}", self.desc)
+    match &self.src {
+      Some(src_err) => write!(f, "ResolutionError: {}, caused by {}", self.desc, src_err),
+      None => write!(f, "ResolutionError: {}", self.desc)
+    }
   }
 }
 
 impl error::Error for ResolutionError {
   fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-    match &self.src {
-      Some(src) => Some(src),
-      None => None
+    self.src.as_ref().map(|s| s as _)
+  }
+}
+
+impl convert::From<HttpError> for ResolutionError {
+  fn from(http_error: HttpError) -> Self {
+    ResolutionError {
+      desc: "Issue with underlying HTTP",
+      src: Some(http_error)
     }
   }
 }
