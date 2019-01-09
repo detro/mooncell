@@ -1,5 +1,6 @@
 //! DoH JSON provider(s)
 
+use core::provider::DoHProvider;
 use dns::protocol::*;
 
 use http::{
@@ -26,7 +27,6 @@ pub struct DoHJsonProvider {
 }
 
 impl DoHJsonProvider {
-
   /// Constructor from "raw" parts
   ///
   /// # Parameters
@@ -77,16 +77,26 @@ impl DoHJsonProvider {
     }
   }
 
-  /// Builds an HTTP request combining the information of the `DoHProvider` with the given `DnsQuery`
-  ///
-  /// This is the important part of this type: taking a "standard" `DnsQuery` and turning it into
-  /// an actual HTTP request that we can send to the give `DoHProvider` and, hopefilly, get
-  /// a DNS resolution back.
-  ///
-  /// # Parameters
-  ///
-  /// * `dns_query` - `DnsQuery` that we need to turn into an HTTP request towards the Provider
-  pub fn build_http_request(&self, dns_query: &DnsQuery) -> Result<Request<()>> {
+}
+
+/// Static `&str` identifier for [Google Public DNS-over-HTTPS](https://developers.google.com/speed/public-dns/docs/dns-over-https) provider
+pub const PROVIDER_NAME_GOOGLE: &'static str = "google";
+/// Static `&str` identifier for [Cloudflare DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https/json-format/) provider
+pub const PROVIDER_NAME_CLOUDFLARE: &'static str = "cloudflare";
+/// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Recommended" provider
+pub const PROVIDER_NAME_QUAD9: &'static str = "quad9";
+/// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Secured" provider
+pub const PROVIDER_NAME_QUAD9_SECURED: &'static str = "quad9-secured";
+/// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Unsecured" provider
+pub const PROVIDER_NAME_QUAD9_UNSECURED: &'static str = "quad9-unsecured";
+/// Static `&str` identifier for [Rubyfish DNS-over-HTTPS](https://www.rubyfish.cn/dns-query) provider (preferable in China)
+pub const PROVIDER_NAME_RUBYFISH: &'static str = "rubyfish";
+/// Static `&str` identifier for [BlahDNS DNS-over-HTTPS](https://blahdns.com/) provider (Preferable in Japan)
+pub const PROVIDER_NAME_BLAHDNS:  &'static str = "blahdns";
+
+impl DoHProvider for DoHJsonProvider {
+
+  fn build_http_request(&self, dns_query: &DnsQuery) -> Result<Request<()>> {
     // Prepare Path and Query parts of the request, combining the Provider "required" parts
     // with the actual DNS Query
     let query_type: &str = dns_query.query_type().into();
@@ -120,34 +130,11 @@ impl DoHJsonProvider {
     req_builder.body(())
   }
 
-  /// Static `&str` identifier for [Google Public DNS-over-HTTPS](https://developers.google.com/speed/public-dns/docs/dns-over-https) provider
-  pub const PROVIDER_NAME_GOOGLE: &'static str = "google";
-  /// Static `&str` identifier for [Cloudflare DNS-over-HTTPS](https://developers.cloudflare.com/1.1.1.1/dns-over-https/json-format/) provider
-  pub const PROVIDER_NAME_CLOUDFLARE: &'static str = "cloudflare";
-  /// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Recommended" provider
-  pub const PROVIDER_NAME_QUAD9: &'static str = "quad9";
-  /// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Secured" provider
-  pub const PROVIDER_NAME_QUAD9_SECURED: &'static str = "quad9-secured";
-  /// Static `&str` identifier for [Quad9 DNS-over-HTTPS](https://www.quad9.net/doh-quad9-dns-servers/) "Unsecured" provider
-  pub const PROVIDER_NAME_QUAD9_UNSECURED: &'static str = "quad9-unsecured";
-  /// Static `&str` identifier for [Rubyfish DNS-over-HTTPS](https://www.rubyfish.cn/dns-query) provider (preferable in China)
-  pub const PROVIDER_NAME_RUBYFISH: &'static str = "rubyfish";
-  /// Static `&str` identifier for [BlahDNS DNS-over-HTTPS](https://blahdns.com/) provider (Preferable in Japan)
-  pub const PROVIDER_NAME_BLAHDNS:  &'static str = "blahdns";
-
-  /// Default providers of DoH JSON services
-  ///
-  /// They are organised in an `HashMap` so we can programmatically list and/or select them.
-  /// Please look at the constant static `&str` prefixed with "`PROVIDER_NAME_`",
-  /// present in this module, to find what keys exist in this map by default.
-  ///
-  /// It's good design to instantiate this once at launch and keep it around for the life
-  /// of the process: it would be wasteful to keep re-instantiating all those strings.
-  pub fn defaults() -> HashMap<&'static str, DoHJsonProvider> {
+  fn defaults() -> HashMap<&'static str, Self> {
     let mut providers = HashMap::new();
 
     // Google
-    providers.insert(Self::PROVIDER_NAME_GOOGLE, DoHJsonProvider::from_raw_parts(
+    providers.insert(PROVIDER_NAME_GOOGLE, DoHJsonProvider::from_raw_parts(
       "https",
       "dns.google.com",
       "/resolve"
@@ -155,44 +142,56 @@ impl DoHJsonProvider {
     // Cloudflare
     let mut cloudflare_headers = HeaderMap::with_capacity(1);
     cloudflare_headers.insert(header::ACCEPT, "application/dns-json".parse().unwrap());
-    providers.insert(Self::PROVIDER_NAME_CLOUDFLARE, DoHJsonProvider::from_raw_parts_with_headers(
+    providers.insert(PROVIDER_NAME_CLOUDFLARE, DoHJsonProvider::from_raw_parts_with_headers(
       "https",
       "cloudflare-dns.com",
       "/dns-query",
       cloudflare_headers
     ));
     // Quad9 recommended
-    providers.insert(Self::PROVIDER_NAME_QUAD9, DoHJsonProvider::from_raw_parts(
+    providers.insert(PROVIDER_NAME_QUAD9, DoHJsonProvider::from_raw_parts(
       "https",
       "dns.quad9.net",
       "/dns-query"
     ));
     // Quad9 secured
-    providers.insert(Self::PROVIDER_NAME_QUAD9_SECURED, DoHJsonProvider::from_raw_parts(
+    providers.insert(PROVIDER_NAME_QUAD9_SECURED, DoHJsonProvider::from_raw_parts(
       "https",
       "dns9.quad9.net",
       "/dns-query"
     ));
     // Quad9 unsecured
-    providers.insert(Self::PROVIDER_NAME_QUAD9_UNSECURED, DoHJsonProvider::from_raw_parts(
+    providers.insert(PROVIDER_NAME_QUAD9_UNSECURED, DoHJsonProvider::from_raw_parts(
       "https",
       "dns10.quad9.net",
       "/dns-query"
     ));
     // Rubyfish
-    providers.insert(Self::PROVIDER_NAME_RUBYFISH, DoHJsonProvider::from_raw_parts(
+    providers.insert(PROVIDER_NAME_RUBYFISH, DoHJsonProvider::from_raw_parts(
       "https",
       "dns.rubyfish.cn",
       "/dns-query"
     ));
     // BlahDNS
-    providers.insert(Self::PROVIDER_NAME_BLAHDNS, DoHJsonProvider::from_raw_parts(
+    providers.insert(PROVIDER_NAME_BLAHDNS, DoHJsonProvider::from_raw_parts(
       "https",
       "doh-de.blahdns.com",
       "/dns-query"
     ));
 
     providers
+  }
+
+  fn default_ids() -> Vec<&'static str> {
+    vec![
+      PROVIDER_NAME_CLOUDFLARE,
+      PROVIDER_NAME_GOOGLE,
+      PROVIDER_NAME_QUAD9,
+      PROVIDER_NAME_QUAD9_SECURED,
+      PROVIDER_NAME_QUAD9_UNSECURED,
+      PROVIDER_NAME_RUBYFISH,
+      PROVIDER_NAME_BLAHDNS
+    ]
   }
 
 }
@@ -203,7 +202,7 @@ impl Default for DoHJsonProvider {
   ///
   /// It's OK to pick sides. Plus, Google has already everything.
   fn default() -> Self {
-    DoHJsonProvider::defaults().get(DoHJsonProvider::PROVIDER_NAME_CLOUDFLARE).unwrap().to_owned()
+    DoHJsonProvider::defaults().get(PROVIDER_NAME_CLOUDFLARE).unwrap().to_owned()
   }
 }
 
@@ -216,7 +215,7 @@ mod test {
     let example_query = DnsQuery::query(DnsDomainName::from_str("ivandemarino.me.").unwrap(), DnsRecordType::AAAA);
 
     let default_provider: DoHJsonProvider = DoHJsonProvider::default();
-    let cloudflare_provider = DoHJsonProvider::defaults().get(DoHJsonProvider::PROVIDER_NAME_CLOUDFLARE).unwrap().to_owned();
+    let cloudflare_provider = DoHJsonProvider::defaults().get(PROVIDER_NAME_CLOUDFLARE).unwrap().to_owned();
 
     // What's going on here? We are testing the same thing twice, as Cloudflare is also the default provider
     let providers = vec![default_provider, cloudflare_provider];
@@ -239,7 +238,7 @@ mod test {
     let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
     let default_providers = DoHJsonProvider::defaults();
 
-    let provider = default_providers.get(DoHJsonProvider::PROVIDER_NAME_GOOGLE).unwrap();
+    let provider = default_providers.get(PROVIDER_NAME_GOOGLE).unwrap();
 
     let http_request = provider.build_http_request(&example_query).unwrap();
     assert_eq!(http_request.method(), Method::GET);
@@ -255,7 +254,7 @@ mod test {
     let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
     let default_providers = DoHJsonProvider::defaults();
 
-    let provider = default_providers.get(DoHJsonProvider::PROVIDER_NAME_QUAD9).unwrap();
+    let provider = default_providers.get(PROVIDER_NAME_QUAD9).unwrap();
 
     let http_request = provider.build_http_request(&example_query).unwrap();
     assert_eq!(http_request.method(), Method::GET);
@@ -271,7 +270,7 @@ mod test {
     let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
     let default_providers = DoHJsonProvider::defaults();
 
-    let provider = default_providers.get(DoHJsonProvider::PROVIDER_NAME_QUAD9_SECURED).unwrap();
+    let provider = default_providers.get(PROVIDER_NAME_QUAD9_SECURED).unwrap();
 
     let http_request = provider.build_http_request(&example_query).unwrap();
     assert_eq!(http_request.method(), Method::GET);
@@ -287,7 +286,7 @@ mod test {
     let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
     let default_providers = DoHJsonProvider::defaults();
 
-    let provider = default_providers.get(DoHJsonProvider::PROVIDER_NAME_QUAD9_UNSECURED).unwrap();
+    let provider = default_providers.get(PROVIDER_NAME_QUAD9_UNSECURED).unwrap();
 
     let http_request = provider.build_http_request(&example_query).unwrap();
     assert_eq!(http_request.method(), Method::GET);
@@ -303,7 +302,7 @@ mod test {
     let example_query = DnsQuery::query(DnsDomainName::from_str("apple.com.").unwrap(), DnsRecordType::A);
     let default_providers = DoHJsonProvider::defaults();
 
-    let provider = default_providers.get(DoHJsonProvider::PROVIDER_NAME_RUBYFISH).unwrap();
+    let provider = default_providers.get(PROVIDER_NAME_RUBYFISH).unwrap();
 
     let http_request = provider.build_http_request(&example_query).unwrap();
     assert_eq!(http_request.method(), Method::GET);
@@ -319,7 +318,7 @@ mod test {
     let example_query = DnsQuery::query(DnsDomainName::from_str("apple.com.").unwrap(), DnsRecordType::A);
     let default_providers = DoHJsonProvider::defaults();
 
-    let provider = default_providers.get(DoHJsonProvider::PROVIDER_NAME_BLAHDNS).unwrap();
+    let provider = default_providers.get(PROVIDER_NAME_BLAHDNS).unwrap();
 
     let http_request = provider.build_http_request(&example_query).unwrap();
     assert_eq!(http_request.method(), Method::GET);
@@ -328,6 +327,18 @@ mod test {
     assert_eq!(http_request.extensions().get::<bool>(), None);
     assert_eq!(http_request.headers().len(), 0);
     assert_eq!(http_request.body(), &());
+  }
+
+  #[test]
+  fn should_provide_default_provider_ids() {
+    assert_eq!(DoHJsonProvider::default_ids().len(), 7);
+    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_CLOUDFLARE));
+    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_GOOGLE));
+    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_QUAD9));
+    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_QUAD9_SECURED));
+    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_QUAD9_UNSECURED));
+    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_RUBYFISH));
+    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_BLAHDNS));
   }
 
 }
