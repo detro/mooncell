@@ -4,9 +4,11 @@
 
 pub use serde_json::Error as DoHParseError;
 
+use core::response::DoHResponse;
 use dns::protocol::*;
 use serde_json::{self, Value};
-use std::{str::FromStr, string::ToString};
+use ipnet::IpNet;
+use std::{str::FromStr, string::ToString, collections::HashMap};
 
 /// Represents the deserialized response body for a DNS-over-HTTPS JSON request
 #[derive(Serialize, Deserialize, Debug)]
@@ -35,6 +37,27 @@ pub struct DoHJsonResponse {
   pub comment: String,
 }
 
+impl DoHResponse for DoHJsonResponse {
+
+  fn apply(&self, req_edns_client_subnet_prefix_len: u8, res_dns_msg: &mut DnsMessage) {
+    res_dns_msg.set_authoritative(self.authenticated_data);
+    res_dns_msg.set_truncated(self.truncated);
+    res_dns_msg.set_recursion_desired(self.recursion_desired);
+    res_dns_msg.set_recursion_available(self.recursion_available);
+    res_dns_msg.set_authentic_data(self.authenticated_data);
+    res_dns_msg.set_checking_disabled(self.checking_disabled);
+    res_dns_msg.set_response_code(self.response_code);
+
+    if let Ok(client_subnet) = self.edns_client_subnet.parse::<IpNet>() {
+      res_dns_msg.set_edns(edns_from_client_subnet(req_edns_client_subnet_prefix_len, &client_subnet));
+    }
+
+    // TODO Add Answers
+    // TODO Add Queries too?
+  }
+
+}
+
 impl FromStr for DoHJsonResponse {
   type Err = DoHParseError;
 
@@ -47,6 +70,64 @@ impl ToString for DoHJsonResponse {
   fn to_string(&self) -> String {
     serde_json::to_string(self).expect("Could not convert DoHResponse to String")
   }
+}
+
+/// Create a `DnsEdns` struct from a response's `edns_client_subnet` `String`
+///
+/// See [official documentation](https://tools.ietf.org/html/rfc7871#page-4) for the format
+/// of EDNS Client Subnet OPT RR format.
+///
+/// # Parameters
+///
+/// * `req_subnet_prefix_len`: subnet size as requested by the client in the request
+/// * `res_subnet`: `&IpNet` representing the EDNS Client Subnet received in a `DoHJsonResponse`
+fn edns_from_client_subnet(req_subnet_prefix_len: u8, res_subnet: &IpNet) -> DnsEdns {
+  // Assemble the RDATA for OPT Record
+  let option_code = DnsRDataOPTCode::Subnet;
+  let option_data: Vec<u8> = match res_subnet {
+    IpNet::V4(subnet_ipv4) => {
+      let mut data = Vec::with_capacity(8);
+
+      // Family (see IANA Address Family Numbers: https://www.iana.org/assignments/address-family-numbers/address-family-numbers.xhtml)
+      data.extend_from_slice(&[0u8, 1u8]);            //< 2 octets for family
+      // Source prefix
+      data.push(req_subnet_prefix_len);
+      // Scope prefix
+      data.push(subnet_ipv4.prefix_len());
+      // Address
+      data.extend_from_slice(&subnet_ipv4.addr().octets());  //< 4 octets in a IPv4 address
+
+      data
+    },
+    IpNet::V6(subnet_ipv6) => {
+      let mut data = Vec::with_capacity(20);
+
+      // Family (see IANA Address Family Numbers: https://www.iana.org/assignments/address-family-numbers/address-family-numbers.xhtml)
+      data.extend_from_slice(&[0u8, 2u8]);            //< 2 octets for family
+      // Source prefix
+      data.push(req_subnet_prefix_len);
+      // Scope prefix
+      data.push(subnet_ipv6.prefix_len());
+      // Address
+      data.extend_from_slice(&subnet_ipv6.addr().octets());  //< 16 octets in a IPv6 address
+
+      data
+    }
+  };
+  let option_length = option_data.len() as u16; //< `option_data` can't exceed `u16` by design of the protocol
+
+  let mut rdata_options: HashMap<DnsRDataOPTCode, DnsRDataOPTOption> = HashMap::with_capacity(1);
+  rdata_options.insert(option_code, DnsRDataOPTOption::Unknown(
+    option_length,
+    option_data
+  ));
+
+  let ttl = 0u32;
+  let rdata = DnsRData::OPT(DnsRDataOPT::new(rdata_options));
+  let opt_record = DnsRecord::from_rdata(DnsDomainName::root(), ttl, DnsRecordType::OPT, rdata);
+
+  // Generate EDNS from OPT Record
+  DnsEdns::from(&opt_record)
 }
 
 /// Question part of a `DoHResponse` type
