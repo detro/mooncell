@@ -2,21 +2,20 @@
 
 use dns::protocol::{DnsMessage, DnsMessageType};
 use http::Error as HttpError;
-
 use std::{fmt, error, convert};
 
-type Result<T> = std::result::Result<T, ResolutionError>;
+type Result<T> = std::result::Result<T, DoHResolutionError>;
 
 /// A type of `Error` emitted by `Resolver`
 ///
 /// It contains a description and an optional `HttpError` that might have caused it
 #[derive(Debug)]
-pub struct ResolutionError {
+pub struct DoHResolutionError {
   desc: &'static str,
   src: Option<HttpError>,
 }
 
-impl fmt::Display for ResolutionError {
+impl fmt::Display for DoHResolutionError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match &self.src {
       Some(src_err) => write!(f, "ResolutionError: {}, caused by {}", self.desc, src_err),
@@ -25,15 +24,15 @@ impl fmt::Display for ResolutionError {
   }
 }
 
-impl error::Error for ResolutionError {
+impl error::Error for DoHResolutionError {
   fn source(&self) -> Option<&(dyn error::Error + 'static)> {
     self.src.as_ref().map(|s| s as _)
   }
 }
 
-impl convert::From<HttpError> for ResolutionError {
+impl convert::From<HttpError> for DoHResolutionError {
   fn from(http_error: HttpError) -> Self {
-    ResolutionError {
+    DoHResolutionError {
       desc: "Failed to execute HTTP request",
       src: Some(http_error)
     }
@@ -70,7 +69,7 @@ pub trait DoHResolver {
     if dns_message.message_type() == DnsMessageType::Query {
       self.resolve_message_query(dns_message)
     } else {
-      Err(ResolutionError {
+      Err(DoHResolutionError {
         desc: "Invalid input: `DnsMessage` was not of type `Query`",
         src: None
       })
