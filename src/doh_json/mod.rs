@@ -11,6 +11,6 @@
 //! ["raw" DNS-over-HTTPS](https://datatracker.ietf.org/doc/rfc8484/): sending DNS message as binary
 //! body in an HTTPS request. This modules is ignoring this specification (for now).
 
-pub mod protocol;
+pub mod response;
 pub mod provider;
 pub mod resolver;

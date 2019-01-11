@@ -16,9 +16,13 @@ extern crate trust_dns_proto;
 // HTTP requests/response
 extern crate http;
 
+// IP Network addresses manipulation
+extern crate ipnet;
+
 pub mod config;
 pub mod dns;
 pub mod doh_json;
+pub mod doh_wire;
 pub mod net;
 pub mod logging;
 pub mod core;

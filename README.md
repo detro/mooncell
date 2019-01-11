@@ -6,17 +6,19 @@ It receives DNS requests (over UDP and TCP) and resolves them using a user selec
 
 ## Requirements for `1.0`
 
+* [ ] Full end-to-end resolution
 * [x] Configurable port to listen on
 * [x] Support for UDP requests
 * [ ] Support for TCP requests
 * [x] Built in list of providers to pick from
 * [x] DNS-over-HTTPS via JSON
-* [ ] Reach providers via IP, not via FQDN (i.e. resolve at launch, then send `Host` header)
 
 ## Follow-up features
 
+* [ ] A configurable, local cache (in memory to begin with, then look into file backed)
 * [ ] DNS-over-HTTPS via binary message
 * [ ] User-configurable provider
+* [ ] Reach providers via IP, not via FQDN (i.e. resolve at launch, then send `Host` header)
 
 ## Related documentation
 

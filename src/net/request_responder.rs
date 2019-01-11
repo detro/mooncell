@@ -1,6 +1,6 @@
 use std::net::{SocketAddr, TcpStream, UdpSocket};
 use dns::protocol::DnsMessage;
-use doh_json::protocol::DoHJsonResponse;
+use doh_json::response::DoHJsonResponse;
 
 /// The type of `DnsRequest`
 #[derive(Debug)]
@@ -86,20 +86,4 @@ impl DnsRequestResponder {
     };
   }
 
-}
-
-//fn response_to_response(doh_response: DoHResponse) -> DnsMessage {
-//  let dns_response = DnsMessage::new();
-//
-//  doh_response.
-//
-//  dns_response
-//}
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod test {
-  use super::*;
-
-  // TODO
 }

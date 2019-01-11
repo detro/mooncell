@@ -2,7 +2,6 @@
 
 use core::provider::DoHProvider;
 use dns::protocol::*;
-
 use http::{
   method::Method,
   version::Version,
@@ -11,7 +10,6 @@ use http::{
   request::{Request, Builder as RequestBuilder},
   Result,
 };
-
 use std::{collections::HashMap, str::FromStr, default::Default};
 
 // TODO Add support for optional parameters: hopefully Google and the others have compatible,

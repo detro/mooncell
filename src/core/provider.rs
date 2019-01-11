@@ -1,9 +1,7 @@
 //! Trait definition for DNS-over-HTTPS provider
 
 use dns::protocol::DnsQuery;
-
 use http::{Result, Request};
-
 use std::{collections::HashMap, default::Default};
 
 /// Trait defining a provider of DNS-over-HTTPS services

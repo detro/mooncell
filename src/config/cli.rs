@@ -2,10 +2,8 @@
 
 use clap::{App, Arg, ArgMatches};
 use log::LevelFilter;
+use config::{defaults, config_provider::ConfigProvider};
 use std::{net::{Ipv4Addr, Ipv6Addr}, fmt};
-
-use super::defaults;
-use super::config_provider::ConfigProvider;
 
 const ARG_IPV4: &'static str = "ipv4";
 const ARG_IPV4_SHORT: &'static str = "4";

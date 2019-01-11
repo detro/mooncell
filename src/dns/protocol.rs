@@ -16,12 +16,16 @@ pub use trust_dns_proto::{
     query::Query as DnsQuery,
     op_code::OpCode as DnsOpCode,
     response_code::ResponseCode as DnsResponseCode,
+    Edns as DnsEdns,
   },
   rr::{
     record_type::RecordType as DnsRecordType,
     dnssec::rdata::DNSSECRecordType as DnsDNSSECRecordType,
     dns_class::DNSClass as DnsClass,
     domain::Name as DnsDomainName,
+    resource::Record as DnsRecord,
+    record_data::RData as DnsRData,
+    rdata::opt::{OPT as DnsRDataOPT, EdnsCode as DnsRDataOPTCode, EdnsOption as DnsRDataOPTOption},
   },
 };
 
