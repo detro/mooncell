@@ -4,7 +4,7 @@ use dns::protocol::*;
 use std::{str::FromStr, string::ToString};
 
 /// Trait defining a _response_ to a DNS Message query
-pub trait DoHResponse: FromStr + ToString {
+pub trait DoHResponse: FromStr + ToString + Default {
 
   /// Apply the response to the given `DnsMessage`
   ///
