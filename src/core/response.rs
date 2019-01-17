@@ -1,4 +1,4 @@
-//! Trait definition for DNS-over-HTTPS response
+//! Trait definition for response to DNS-over-HTTPS requests
 
 use dns::protocol::*;
 use std::{str::FromStr, string::ToString};

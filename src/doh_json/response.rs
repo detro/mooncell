@@ -1,4 +1,4 @@
-//! Representation of types used by DoH JSON Protocol.
+//! Implementation of `DoHResponse` for the DoH JSON Protocol.
 //!
 //! Based on [Serde JSON](https://crates.io/crates/serde_json).
 
@@ -59,6 +59,15 @@ impl DoHJsonResponse {
       Ok(subnet) => Ok(Some(subnet)),
       Err(_) => Ok(None)
     }
+  }
+
+  /// Dserializes a slice of bytes (`&[u8]`) into a `DoHJsonResponse`
+  ///
+  /// # Parameters
+  ///
+  /// * `bytes`: slice of bytes that can be deserialized to `DoHJsonResponse`
+  pub fn from_slice(bytes: &[u8]) -> Result<Self, DoHParseError> {
+    Ok(serde_json::from_slice(bytes)?)
   }
 
 }
