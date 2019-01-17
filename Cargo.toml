@@ -10,17 +10,19 @@ clap = "2.32.0"
 log = "0.4.6"
 log4rs = "0.8.1"
 
-trust-dns-proto = { version = "0.5.0", features = ["dnssec"] }
+trust-dns-proto = { version = "0.6.1", features = ["dnssec"] }
 
 http = "0.1.14"
+curl= { version = "0.4.19", features = ["ssl", "static-curl", "static-ssl"] }
 
 ipnet = "2.0.0"
 
 threadpool = "1.7.1"
+num_cpus = "1.9.0"
 
-serde = "1.0.81"
-serde_derive = "1.0.81"
-serde_json = "1.0.33"
+serde = "1.0.84"
+serde_derive = "1.0.84"
+serde_json = "1.0.34"
 
 [lib]
 name = "mooncell"
@@ -29,3 +31,7 @@ path = "src/lib.rs"
 [[bin]]
 name = "mooncell"
 path = "src/main.rs"
+
+[profile.release]
+lto = true
+panic = 'abort'

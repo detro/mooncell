@@ -15,9 +15,14 @@ extern crate trust_dns_proto;
 
 // HTTP requests/response
 extern crate http;
+extern crate curl;
 
 // IP Network addresses manipulation
 extern crate ipnet;
+
+// Threading
+extern crate threadpool;
+extern crate num_cpus;
 
 pub mod config;
 pub mod dns;
