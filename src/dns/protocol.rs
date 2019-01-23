@@ -71,3 +71,97 @@ pub fn dns_record_type_deserialize<'de, D>(deserializer: D) -> Result<DnsRecordT
   let raw_record_type: u16 = Deserialize::deserialize(deserializer)?;
   Ok(raw_record_type.into())
 }
+
+#[cfg(test)]
+mod test {
+  use super::*;
+  use std::{io::Read, fs::File, path::Path};
+
+  fn read_file_to_vec<P: AsRef<Path>>(path: P) -> Vec<u8> {
+    let mut f = File::open(path).unwrap();
+    let mut buf = Vec::new();
+    f.read_to_end(&mut buf).unwrap();
+
+    buf
+  }
+
+  #[test]
+  fn should_deserialize_udp_query_example_com() {
+    let buf = read_file_to_vec("./test/fixtures/dns_udp_query_A-example.com-packet.bin");
+    let dns_req_result = DnsMessage::from_vec(&buf);
+
+    println!("{:#?}", dns_req_result);
+    assert!(dns_req_result.is_ok());
+    let dns_req = dns_req_result.unwrap();
+
+    assert_eq!(dns_req.message_type(), DnsMessageType::Query);
+    assert!(dns_req.id() > 0);
+    assert_eq!(dns_req.query_count(), 1);
+    assert_eq!(dns_req.answer_count(), 0);
+    assert_eq!(dns_req.additional_count(), 1);
+    assert_eq!(dns_req.name_server_count(), 0);
+
+    let dns_query = &(dns_req.queries())[0];
+    assert_eq!(dns_query.query_type(), DnsRecordType::A);
+    assert_eq!(dns_query.query_class(), DnsClass::IN);
+    assert_eq!(dns_query.name().to_utf8(), "example.com.");
+
+    assert!(dns_req.edns().is_some());
+    let edns = dns_req.edns().unwrap();
+    assert_eq!(edns.version(), 0);
+    assert_eq!(edns.options().options().len(), 1);
+    assert!(edns.options().options().contains_key(&DnsRDataOPTCode::Cookie));
+  }
+
+  #[test]
+  fn should_deserialize_udp_query_noedns_example_com() {
+    let buf = read_file_to_vec("./test/fixtures/dns_udp_query_noedns_A-example.com-packet.bin");
+    let dns_req_result = DnsMessage::from_vec(&buf);
+
+    println!("{:#?}", dns_req_result);
+    assert!(dns_req_result.is_ok());
+    let dns_req = dns_req_result.unwrap();
+
+    assert_eq!(dns_req.message_type(), DnsMessageType::Query);
+    assert!(dns_req.id() > 0);
+    assert_eq!(dns_req.query_count(), 1);
+    assert_eq!(dns_req.answer_count(), 0);
+    assert_eq!(dns_req.additional_count(), 0);
+    assert_eq!(dns_req.name_server_count(), 0);
+
+    let dns_query = &(dns_req.queries())[0];
+    assert_eq!(dns_query.query_type(), DnsRecordType::A);
+    assert_eq!(dns_query.query_class(), DnsClass::IN);
+    assert_eq!(dns_query.name().to_utf8(), "example.com.");
+
+    assert!(dns_req.edns().is_none());
+  }
+
+  #[test]
+  fn should_deserialize_udp_query_aaaa_www_ivandemarino_me() {
+    let buf = read_file_to_vec("./test/fixtures/dns_udp_query_AAAA-www.ivandemarino.me-packet.bin");
+    let dns_req_result = DnsMessage::from_vec(&buf);
+
+    println!("{:#?}", dns_req_result);
+    assert!(dns_req_result.is_ok());
+    let dns_req = dns_req_result.unwrap();
+
+    assert_eq!(dns_req.message_type(), DnsMessageType::Query);
+    assert!(dns_req.id() > 0);
+    assert_eq!(dns_req.query_count(), 1);
+    assert_eq!(dns_req.answer_count(), 0);
+    assert_eq!(dns_req.additional_count(), 1);
+    assert_eq!(dns_req.name_server_count(), 0);
+
+    let dns_query = &(dns_req.queries())[0];
+    assert_eq!(dns_query.query_type(), DnsRecordType::AAAA);
+    assert_eq!(dns_query.query_class(), DnsClass::IN);
+    assert_eq!(dns_query.name().to_utf8(), "www.ivandemarino.me.");
+
+    assert!(dns_req.edns().is_some());
+    let edns = dns_req.edns().unwrap();
+    assert_eq!(edns.version(), 0);
+    assert_eq!(edns.options().options().len(), 1);
+    assert!(edns.options().options().contains_key(&DnsRDataOPTCode::Cookie));
+  }
+}

@@ -139,3 +139,32 @@ fn execute_http_request(req_http: HttpRequest<()>) -> Result<DoHJsonResponse> {
   DoHJsonResponse::from_slice(&res_curl_buf)
     .map_err(|serde_error| DoHResolutionError::from(serde_error))
 }
+
+#[cfg(test)]
+mod test {
+  use super::*;
+  use doh_json::provider::{self, DoHJsonProvider};
+  use std::{io::Read, fs::File, path::Path};
+
+  fn read_file_to_vec<P: AsRef<Path>>(path: P) -> Vec<u8> {
+    let mut f = File::open(path).unwrap();
+    let mut buf = Vec::new();
+    f.read_to_end(&mut buf).unwrap();
+
+    buf
+  }
+
+  #[test]
+  fn should_resolve_example_dot_com() {
+    let providers = DoHJsonProvider::defaults();
+    let provider = providers.get(provider::PROVIDER_NAME_GOOGLE).unwrap();
+
+    let resolver = DoHJsonResolver::new(provider);
+
+    let buf = read_file_to_vec("./test/fixtures/dns_udp_query_A-example.com-packet.bin");
+    let dns_msg_req = DnsMessage::from_vec(&buf).unwrap();
+
+    let dns_msg_res_result = resolver.resolve_message_query(&dns_msg_req);
+    println!("{:#?}", dns_msg_res_result);
+  }
+}

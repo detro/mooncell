@@ -10,14 +10,14 @@ NOTE: `nc` will listen on port `1053` to avoid having to summon raise privileges
 ### `nc`
 
 * `nc -u -l -p 1053 > output`: listen for UDP packets on port 1053
-* `nc -l -p 1053 > output`: listen for TCP packets on port 1053
 
-NOTE: Being TCP a connection-based protocol, `nc` by default will quit AFTER a received
-connection is closed by the client. When instead listening on UDP, use `CTRL+C` after `dig`
-quits.
+#### `nc` vs TCP
+
+Even though `nc` can listen for TCP connections and receive request traffic, it seems it's unable
+to separate the body of the request from the datagram used to establish the connection.
+So this approach to capturing packets, for TCP, doesn't work. 
 
 ### `dig`
 
 * `dig +retry=0 -p 1053 @127.0.0.1 example.com`: sends a single DNS query over UDP at port 1053
 * `dig +retry=0 -p 1053 @127.0.0.1 +noedns example.com`: sends a single DNS query over UDP, without EDNS extensions, at port 1053
-* `dig +retry=0 +tcp -p 1053 @127.0.0.1 example.com`: sends a single DNS query over TCP at port 1053
