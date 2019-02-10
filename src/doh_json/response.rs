@@ -36,6 +36,9 @@ pub struct DoHJsonResponse {
   pub edns_client_subnet: Option<IpNet>,        //< IP address / scope prefix-length
   #[serde(rename = "Comment", default)]
   pub comment: String,
+
+  // TODO Add support for "Authority" field (CloudFlare has it). Example:
+  //   ".., "Authority":[{"name": "github.io.", "type": 6, "TTL": 60, "data": "ns1.p16.dynect.net. hostmaster.github.com. 92 3600 600 604800 60"}] }"
 }
 
 impl DoHJsonResponse {

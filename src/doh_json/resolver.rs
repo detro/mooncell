@@ -56,9 +56,12 @@ impl <'a> DoHResolver for DoHJsonResolver<'a> {
 
       self.pool.execute(move || {
         let req_http = provider.build_http_request(&query).unwrap();
-        let res_doh_result = execute_http_request(req_http);
+        let res_doh = execute_http_request(req_http);
 
-        tx.send(res_doh_result).expect("Couldn't deliver HTTP request `Result<DoHJsonResponse>`: this should never happen!");
+        trace!("DoH response: {:?}", res_doh);
+
+        tx.send(res_doh)
+          .expect("Couldn't deliver HTTP request `Result<DoHJsonResponse>`: this should never happen!");
       });
     }
 
@@ -69,7 +72,7 @@ impl <'a> DoHResolver for DoHJsonResolver<'a> {
       .for_each(|res_doh_result| {
         match res_doh_result {
           Ok(res_doh) => {
-            // TODO Provide the correct edns_client_subnet_prefix if present
+            // TODO Provide the correct edns_client_subnet_prefix if present in `req_dns_msg`
             res_doh.apply(0, &mut res_dns_msg);
           },
           Err(err) => error!("A DoH JSON HTTP Request failed: {}", err),
@@ -135,6 +138,8 @@ fn execute_http_request(req_http: HttpRequest<()>) -> Result<DoHJsonResponse> {
     req_curl_transfer.perform()?;
   }
 
+  trace!("Raw DoH response: {:?}", std::str::from_utf8(&res_curl_buf).unwrap());
+
   // Parse the response buffer into a DoHJsonResponse
   DoHJsonResponse::from_slice(&res_curl_buf)
     .map_err(|serde_error| DoHResolutionError::from(serde_error))
@@ -144,7 +149,9 @@ fn execute_http_request(req_http: HttpRequest<()>) -> Result<DoHJsonResponse> {
 mod test {
   use super::*;
   use doh_json::provider::{self, DoHJsonProvider};
+  use dns::protocol::{DnsMessage, DnsRecordType, DnsClass, DnsRData, dns_message_to_bytes, dns_message_from_bytes};
   use std::{io::Read, fs::File, path::Path};
+  use logging;
 
   fn read_file_to_vec<P: AsRef<Path>>(path: P) -> Vec<u8> {
     let mut f = File::open(path).unwrap();
@@ -154,17 +161,136 @@ mod test {
     buf
   }
 
+  // TODO I hate every character of this function: this is only necessary because trust-dns
+  //  designed DnsMessage to be truly finalized (i.e. all headers updated) at the serialization time.
+  //  I'll fix this once I take out the part of trust-dns I need for this project.
+  fn force_msg_finalization(dns_msg: DnsMessage) -> DnsMessage {
+    let bytes = dns_message_to_bytes(&dns_msg).unwrap();
+    dns_message_from_bytes(&bytes).unwrap()
+  }
+
   #[test]
-  fn should_resolve_example_dot_com() {
+  fn should_resolve_udp_query_example_com() {
     let providers = DoHJsonProvider::defaults();
     let provider = providers.get(provider::PROVIDER_NAME_GOOGLE).unwrap();
 
     let resolver = DoHJsonResolver::new(provider);
 
     let buf = read_file_to_vec("./test/fixtures/dns_udp_query_A-example.com-packet.bin");
-    let dns_msg_req = DnsMessage::from_vec(&buf).unwrap();
+    let dns_req = DnsMessage::from_vec(&buf).unwrap();
 
-    let dns_msg_res_result = resolver.resolve_message_query(&dns_msg_req);
-    println!("{:#?}", dns_msg_res_result);
+    let dns_res_result = resolver.resolve_message_query(&dns_req);
+    assert!(dns_res_result.is_ok());
+    let dns_res = force_msg_finalization(dns_res_result.unwrap());
+
+    assert_eq!(dns_res.message_type(), DnsMessageType::Response);
+    assert!(dns_res.id() > 0);
+    assert_eq!(dns_res.query_count(), 1);
+    assert_eq!(dns_res.answer_count(), 1);
+    assert_eq!(dns_res.additional_count(), 0);
+    assert_eq!(dns_res.name_server_count(), 0);
+
+    assert_eq!(dns_res.queries().len(), 1);
+    let dns_query = &(dns_res.queries())[0];
+    assert_eq!(dns_query.query_type(), DnsRecordType::A);
+    assert_eq!(dns_query.query_class(), DnsClass::IN);
+    assert_eq!(dns_query.name().to_utf8(), "example.com.");
+
+    assert_eq!(dns_res.answers().len(), 1);
+    let dns_answer = &(dns_res.answers())[0];
+    assert_eq!(dns_answer.record_type(), DnsRecordType::A);
+    assert_eq!(dns_answer.dns_class(), DnsClass::IN);
+    assert_eq!(dns_answer.name().to_utf8(), "example.com.");
+    assert!(dns_answer.ttl() > 100);
+    assert_eq!(dns_answer.rdata().to_record_type(), DnsRecordType::A);
+
+    assert!(dns_res.edns().is_none());
+  }
+
+  #[test]
+  fn should_resolve_udp_query_noedns_example_com() {
+    let providers = DoHJsonProvider::defaults();
+    let provider = providers.get(provider::PROVIDER_NAME_QUAD9).unwrap();
+
+    let resolver = DoHJsonResolver::new(provider);
+
+    let buf = read_file_to_vec("./test/fixtures/dns_udp_query_noedns_A-example.com-packet.bin");
+    let dns_req = DnsMessage::from_vec(&buf).unwrap();
+
+    let dns_res_result = resolver.resolve_message_query(&dns_req);
+    assert!(dns_res_result.is_ok());
+    let dns_res = force_msg_finalization(dns_res_result.unwrap());
+
+    assert_eq!(dns_res.message_type(), DnsMessageType::Response);
+    assert!(dns_res.id() > 0);
+    assert_eq!(dns_res.query_count(), 1);
+    assert_eq!(dns_res.answer_count(), 1);
+    assert_eq!(dns_res.additional_count(), 0);
+    assert_eq!(dns_res.name_server_count(), 0);
+
+    assert_eq!(dns_res.queries().len(), 1);
+    let dns_query = &(dns_res.queries())[0];
+    assert_eq!(dns_query.query_type(), DnsRecordType::A);
+    assert_eq!(dns_query.query_class(), DnsClass::IN);
+    assert_eq!(dns_query.name().to_utf8(), "example.com.");
+
+    assert_eq!(dns_res.answers().len(), 1);
+    let dns_answer = &(dns_res.answers())[0];
+    assert_eq!(dns_answer.record_type(), DnsRecordType::A);
+    assert_eq!(dns_answer.dns_class(), DnsClass::IN);
+    assert_eq!(dns_answer.name().to_utf8(), "example.com.");
+    assert!(dns_answer.ttl() > 100);
+    assert_eq!(dns_answer.rdata().to_record_type(), DnsRecordType::A);
+
+    assert!(dns_res.edns().is_none());
+  }
+
+  #[test]
+  fn should_resolve_udp_query_aaaa_www_ivandemarino_me() {
+    let providers = DoHJsonProvider::defaults();
+    let provider = providers.get(provider::PROVIDER_NAME_CLOUDFLARE).unwrap();
+
+    let resolver = DoHJsonResolver::new(provider);
+
+    let buf = read_file_to_vec("./test/fixtures/dns_udp_query_AAAA-www.ivandemarino.me-packet.bin");
+    let dns_req = DnsMessage::from_vec(&buf).unwrap();
+
+    let dns_res_result = resolver.resolve_message_query(&dns_req);
+    assert!(dns_res_result.is_ok());
+    let dns_res = force_msg_finalization(dns_res_result.unwrap());
+
+    assert_eq!(dns_res.message_type(), DnsMessageType::Response);
+    assert!(dns_res.id() > 0);
+    assert_eq!(dns_res.query_count(), 1);
+    assert_eq!(dns_res.answer_count(), 2);
+    assert_eq!(dns_res.additional_count(), 0);
+    assert_eq!(dns_res.name_server_count(), 0);
+
+    assert_eq!(dns_res.queries().len(), 1);
+    let dns_query = &(dns_res.queries())[0];
+    assert_eq!(dns_query.query_type(), DnsRecordType::AAAA);
+    assert_eq!(dns_query.name().to_utf8(), "www.ivandemarino.me.");
+
+    assert_eq!(dns_res.answers().len(), 2);
+
+    let dns_answer = &(dns_res.answers())[0];
+    assert_eq!(dns_answer.record_type(), DnsRecordType::CNAME);
+    assert_eq!(dns_answer.name().to_utf8(), "www.ivandemarino.me.");
+    assert!(dns_answer.ttl() > 100);
+    match dns_answer.rdata() {
+      DnsRData::CNAME(name) => assert_eq!(name.to_utf8(), "detro.github.com."),
+      _ => panic!(),
+    };
+
+    let dns_answer = &(dns_res.answers())[1];
+    assert_eq!(dns_answer.record_type(), DnsRecordType::CNAME);
+    assert_eq!(dns_answer.name().to_utf8(), "detro.github.com.");
+    assert!(dns_answer.ttl() > 100);
+    match dns_answer.rdata() {
+      DnsRData::CNAME(name) => assert_eq!(name.to_utf8(), "github.github.io."),
+      _ => panic!(),
+    };
+
+    assert!(dns_res.edns().is_none());
   }
 }
