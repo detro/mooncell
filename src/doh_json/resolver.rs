@@ -38,7 +38,7 @@ impl <'a> DoHJsonResolver<'a> {
 
 impl <'a> DoHResolver for DoHJsonResolver<'a> {
 
-  fn resolve_message_query(&self, req_dns_msg: &DnsMessage) -> Result<DnsMessage> {
+  fn resolve_query(&self, req_dns_msg: &DnsMessage) -> Result<DnsMessage> {
     // Begin preparing response DNS Message
     let mut res_dns_msg = DnsMessage::new();
     res_dns_msg.set_id(req_dns_msg.id());
@@ -179,7 +179,7 @@ mod test {
     let buf = read_file_to_vec("./test/fixtures/dns_udp_query_A-example.com-packet.bin");
     let dns_req = DnsMessage::from_vec(&buf).unwrap();
 
-    let dns_res_result = resolver.resolve_message_query(&dns_req);
+    let dns_res_result = resolver.resolve_query(&dns_req);
     assert!(dns_res_result.is_ok());
     let dns_res = force_msg_finalization(dns_res_result.unwrap());
 
@@ -217,7 +217,7 @@ mod test {
     let buf = read_file_to_vec("./test/fixtures/dns_udp_query_noedns_A-example.com-packet.bin");
     let dns_req = DnsMessage::from_vec(&buf).unwrap();
 
-    let dns_res_result = resolver.resolve_message_query(&dns_req);
+    let dns_res_result = resolver.resolve_query(&dns_req);
     assert!(dns_res_result.is_ok());
     let dns_res = force_msg_finalization(dns_res_result.unwrap());
 
@@ -255,7 +255,7 @@ mod test {
     let buf = read_file_to_vec("./test/fixtures/dns_udp_query_AAAA-www.ivandemarino.me-packet.bin");
     let dns_req = DnsMessage::from_vec(&buf).unwrap();
 
-    let dns_res_result = resolver.resolve_message_query(&dns_req);
+    let dns_res_result = resolver.resolve_query(&dns_req);
     assert!(dns_res_result.is_ok());
     let dns_res = force_msg_finalization(dns_res_result.unwrap());
 

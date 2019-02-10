@@ -64,7 +64,7 @@ pub trait DoHResolver {
   /// # Parameters
   ///
   /// * `dns_message` - A `DnsMessage` that we assume is of type `DnsMessageType::Query`
-  fn resolve_message_query(&self, dns_message: &DnsMessage) -> Result<DnsMessage>;
+  fn resolve_query(&self, dns_message: &DnsMessage) -> Result<DnsMessage>;
 
   /// Resolves a DNS Query and returns a DNS Response
   ///
@@ -80,7 +80,7 @@ pub trait DoHResolver {
   fn resolve(&self, dns_message: &DnsMessage) -> Result<DnsMessage> {
     // Before resolving, check the type is right
     if dns_message.message_type() == DnsMessageType::Query {
-      self.resolve_message_query(dns_message)
+      self.resolve_query(dns_message)
     } else {
       Err(DoHResolutionError::new("Invalid input: `DnsMessage` was not of type `Query`".into()))
     }
