@@ -88,9 +88,8 @@ mod test {
   #[test]
   fn should_deserialize_udp_query_example_com() {
     let buf = read_file_to_vec("./test/fixtures/dns_udp_query_A-example.com-packet.bin");
-    let dns_req_result = DnsMessage::from_vec(&buf);
+    let dns_req_result = dns_message_from_bytes(&buf);
 
-    println!("{:#?}", dns_req_result);
     assert!(dns_req_result.is_ok());
     let dns_req = dns_req_result.unwrap();
 
@@ -116,9 +115,8 @@ mod test {
   #[test]
   fn should_deserialize_udp_query_noedns_example_com() {
     let buf = read_file_to_vec("./test/fixtures/dns_udp_query_noedns_A-example.com-packet.bin");
-    let dns_req_result = DnsMessage::from_vec(&buf);
+    let dns_req_result = dns_message_from_bytes(&buf);
 
-    println!("{:#?}", dns_req_result);
     assert!(dns_req_result.is_ok());
     let dns_req = dns_req_result.unwrap();
 
@@ -140,9 +138,8 @@ mod test {
   #[test]
   fn should_deserialize_udp_query_aaaa_www_ivandemarino_me() {
     let buf = read_file_to_vec("./test/fixtures/dns_udp_query_AAAA-www.ivandemarino.me-packet.bin");
-    let dns_req_result = DnsMessage::from_vec(&buf);
+    let dns_req_result = dns_message_from_bytes(&buf);
 
-    println!("{:#?}", dns_req_result);
     assert!(dns_req_result.is_ok());
     let dns_req = dns_req_result.unwrap();
 
