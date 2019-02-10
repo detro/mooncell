@@ -151,7 +151,6 @@ mod test {
   use doh_json::provider::{self, DoHJsonProvider};
   use dns::protocol::{DnsMessage, DnsRecordType, DnsClass, DnsRData, dns_message_to_bytes, dns_message_from_bytes};
   use std::{io::Read, fs::File, path::Path};
-  use logging;
 
   fn read_file_to_vec<P: AsRef<Path>>(path: P) -> Vec<u8> {
     let mut f = File::open(path).unwrap();
