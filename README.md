@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/detro/mooncell.svg?branch=master)](https://travis-ci.org/detro/mooncell)
+
 # Mooncell
 
 A DNS over HTTPS proxy/bridge.
