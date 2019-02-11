@@ -1,6 +1,5 @@
 use std::net::{SocketAddr, TcpStream, UdpSocket};
-use dns::protocol::DnsMessage;
-use doh_json::response::DoHJsonResponse;
+use dns::protocol::{DnsMessage, dns_message_to_bytes};
 
 /// The type of `DnsRequest`
 #[derive(Debug)]
@@ -15,15 +14,15 @@ enum DnsRequestType {
 /// to distinguish of which nature the request is. The _type_ also determines if the fields
 /// `tcp_stream` or `udp_socket` are populated: they are mutually exclusive.
 #[derive(Debug)]
-pub struct DnsRequestResponder {
+pub struct DnsRequest {
   source: SocketAddr,
-  message: DnsMessage,
+  dns_query: DnsMessage,
   req_type: DnsRequestType,
   tcp_stream: Option<TcpStream>,
   udp_socket: Option<UdpSocket>,
 }
 
-impl DnsRequestResponder {
+impl DnsRequest {
 
   /// Constructor for a new `DnsRequestResponder` of type `UdpRequest`
   ///
@@ -31,16 +30,16 @@ impl DnsRequestResponder {
   ///
   /// # Parameters
   ///
-  /// * `src` - Socket address source
-  /// * `msg` - DNS Message received from the given source
-  /// * `sock` - UDP Socket from which the Message was received and a response can be sent
-  pub fn from_udp_request(src: SocketAddr, msg: DnsMessage, sock: UdpSocket) -> DnsRequestResponder {
-    DnsRequestResponder {
-      source: src,
-      message: msg,
+  /// * `source` - Socket address source
+  /// * `dns_query` - DNS Message received from the given source
+  /// * `socket` - UDP Socket from which the Message was received and a response can be sent
+  pub fn from_udp(source: SocketAddr, dns_query: DnsMessage, socket: UdpSocket) -> DnsRequest {
+    DnsRequest {
+      source,
+      dns_query,
       req_type: DnsRequestType::UdpRequest,
       tcp_stream: None,
-      udp_socket: Some(sock)
+      udp_socket: Some(socket)
     }
   }
 
@@ -50,15 +49,15 @@ impl DnsRequestResponder {
   ///
   /// # Parameters
   ///
-  /// * `src` - Socket address source
-  /// * `msg` - DNS DnsMessage received from the given source
-  /// * `strm` - TCP Stream representing a live and established connection with the source
-  pub fn from_tcp_request(src: SocketAddr, msg: DnsMessage, strm: TcpStream) -> DnsRequestResponder {
-    DnsRequestResponder {
-      source: src,
-      message: msg,
+  /// * `source` - Socket address source
+  /// * `dns_query` - DNS DnsMessage received from the given source
+  /// * `stream` - TCP Stream representing a live and established connection with the source
+  pub fn from_tcp(source: SocketAddr, dns_query: DnsMessage, stream: TcpStream) -> DnsRequest {
+    DnsRequest {
+      source,
+      dns_query,
       req_type: DnsRequestType::TcpRequest,
-      tcp_stream: Some(strm),
+      tcp_stream: Some(stream),
       udp_socket: None
     }
   }
@@ -67,22 +66,37 @@ impl DnsRequestResponder {
     &self.source
   }
 
-  pub fn message(&self) -> &DnsMessage {
-    &self.message
+  pub fn dns_query(&self) -> &DnsMessage {
+    &self.dns_query
   }
 
-  pub fn respond(&self, _response: DoHJsonResponse) {
-    // TODO
+  pub fn respond(self, dns_res: DnsMessage) {
+    match dns_message_to_bytes(&dns_res) {
+      Ok(raw_dns_res) => {
+        match self.req_type {
+          // Send response over UDP
+          DnsRequestType::UdpRequest => {
+            match self.udp_socket.unwrap().send_to(raw_dns_res.as_ref(), self.source) {
+              Err(err) => {
+                error!("Unable to send response back over UDP socket: {}", err);
+              },
+              Ok(amount) => {
+                trace!("Sent back response over UDP socket, made of {} bytes", amount);
+              },
+            };
+          },
 
-    match &self.req_type {
-      DnsRequestType::UdpRequest => {
-        // TODO
-        unimplemented!();
+          // Send response over TCP
+          DnsRequestType::TcpRequest => {
+            // TODO Send message back on the TCP stream
+            unimplemented!();
+          }
+        };
       },
-      DnsRequestType::TcpRequest => {
-        // TODO
-        unimplemented!();
-      }
+      Err(err) => {
+        error!("Unable to serialize response: {}", err);
+        // TODO Send a empty/error DNS response (or something sensible)
+      },
     };
   }
 
