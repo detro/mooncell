@@ -1,20 +1,24 @@
+//! Implementation of a Server, that listen for both UDP and TCP DNS queries
+//!
+//! It's role is to handle the networking part of receiving a DNS queries
+
 use std::{net::{Ipv4Addr, Ipv6Addr, UdpSocket}, thread, time::Duration, io::ErrorKind, sync::mpsc::Sender};
 
 use config::config_provider::ConfigProvider;
-use net::{utils::{bind_udp_sockets, /*bind_tcp_listeners*/}, request_responder::DnsRequest};
+use net::{utils::{bind_udp_sockets, /*bind_tcp_listeners*/}, request::Request};
 use dns;
 
 /// The DNS Server that listens for DNS queries over UDP or TCP requests.
 #[derive(Debug)]
-pub struct DnsServer {
+pub struct Server {
   ip4s: Vec<Ipv4Addr>,
   ip6s: Vec<Ipv6Addr>,
   port: u16,
   threads: Vec<thread::JoinHandle<()>>,
-  sender: Sender<DnsRequest>,
+  sender: Sender<Request>,
 }
 
-impl DnsServer {
+impl Server {
 
   /// Constructor
   ///
@@ -22,8 +26,8 @@ impl DnsServer {
   ///
   /// * `config` - Configuration to be used by the `DnsServer` when started
   /// * `sender` - Channel sender to "emit" `DnsRequest` after been received and parsed by the Server
-  pub fn new<C: ConfigProvider>(config: &C, sender: Sender<DnsRequest>) -> DnsServer {
-    DnsServer {
+  pub fn new<C: ConfigProvider>(config: &C, sender: Sender<Request>) -> Server {
+    Server {
       ip4s: config.ipv4(),
       ip6s: config.ipv6(),
       port: config.port(),
@@ -89,7 +93,7 @@ impl DnsServer {
                 Ok(dns_message) => {
                   if dns_message.message_type() == dns::protocol::DnsMessageType::Query {
                     let u_sock = thread_udp_sock.try_clone().unwrap();
-                    let dns_request = DnsRequest::from_udp(src, dns_message, u_sock);
+                    let dns_request = Request::from_udp(src, dns_message, u_sock);
 
                     thread_udp_sender.send(dns_request).expect("Unable to pass on DNS Request for processing");
                   } else {

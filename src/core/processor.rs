@@ -1,8 +1,8 @@
 //! Processor...
 
 use std::sync::mpsc::Receiver;
-use net::request_responder::DnsRequest;
+use net::request::Request;
 
 pub struct Processor {
-  receiver: Receiver<DnsRequest>,
+  receiver: Receiver<Request>,
 }

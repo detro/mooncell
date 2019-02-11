@@ -3,7 +3,7 @@ extern crate mooncell;
 
 use std::sync::mpsc::{Sender, Receiver, channel};
 
-use mooncell::{logging, net::{server::DnsServer, request_responder::DnsRequest}, config::{cli::CLI}};
+use mooncell::{logging, net::{server::Server, request::Request}, config::{cli::CLI}};
 
 fn main() {
   let cli = CLI::new();
@@ -12,9 +12,9 @@ fn main() {
   logging::init(&cli);
   info!("DNS Server starting");
 
-  let (sender, receiver): (Sender<DnsRequest>, Receiver<DnsRequest>) = channel();
+  let (sender, receiver): (Sender<Request>, Receiver<Request>) = channel();
 
-  let mut server = DnsServer::new(&cli, sender);
+  let mut server = Server::new(&cli, sender);
   server.start();
 
   // TODO Temporary: just used to prove cross-thread comms
