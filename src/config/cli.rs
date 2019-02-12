@@ -1,8 +1,10 @@
-//! Command Line Interface implementation of `ConfigProvider`
+//! Command Line Interface implementation of `Config`
 
-use clap::{App, Arg, ArgMatches};
+use clap::{App, Arg, ArgMatches, SubCommand};
 use log::LevelFilter;
-use config::{defaults, config_provider::ConfigProvider};
+use config::{defaults, config::Config};
+use core::{protocol::DoHProtocol, provider::DoHProvider};
+use doh_json::provider::DoHJsonProvider;
 use std::{net::{Ipv4Addr, Ipv6Addr}, fmt};
 
 const ARG_IPV4: &'static str = "ipv4";
@@ -11,14 +13,18 @@ const ARG_IPV6: &'static str = "ipv6";
 const ARG_IPV6_SHORT: &'static str = "6";
 const ARG_PORT: &'static str = "port";
 const ARG_PORT_SHORT: &'static str = "p";
+const ARG_PROTOCOL: &'static str = "protocol";
+const ARG_PROVIDER: &'static str = "provider";
 const ARG_VERBOSE: &'static str = "verbose";
 const ARG_VERBOSE_SHORT: &'static str = "v";
 const ARG_QUIET: &'static str = "quiet";
 const ARG_QUIET_SHORT: &'static str = "q";
+const SUBCOMMAND_LIST_PROVIDERS: &'static str = "list-providers";
+const SUBCOMMAND_ALIAS_LIST_PROVIDERS: &'static str = "lsprov";
 
 /// Command Line Interface
 ///
-/// This implements `ConfigProvider` by parsing the arguments passed to the executable at launch.
+/// This implements `Config` by parsing the arguments passed to the executable at launch.
 #[derive(Clone)]
 pub struct CLI<'a> {
   arg_matches: ArgMatches<'a>
@@ -39,7 +45,7 @@ impl<'a> CLI<'a> {
         .required(false)
         .multiple(true)
         .default_value(defaults::IPV4_DEFAULT)
-        .help("IPv4 to bind DNS server to (can use multiple times)")
+        .help("IPv4(s) to bind DNS server to")
       )
       .arg(Arg::with_name(ARG_IPV6)
         .long(ARG_IPV6)
@@ -47,7 +53,7 @@ impl<'a> CLI<'a> {
         .required(false)
         .multiple(true)
         .default_value(defaults::IPV6_DEFAULT)
-        .help("IPv6 to bind DNS server to (can use multiple times)")
+        .help("IPv6(s) to bind DNS server to")
       )
       .arg(Arg::with_name(ARG_PORT)
         .long(ARG_PORT)
@@ -56,6 +62,21 @@ impl<'a> CLI<'a> {
         .multiple(false)
         .default_value(defaults::PORT_DEFAULT)
         .help("Port to listen on")
+      )
+      .arg(Arg::with_name(ARG_PROTOCOL)
+        .long(ARG_PROTOCOL)
+        .required(false)
+        .multiple(false)
+        .possible_values(&[DoHProtocol::JSON.into(), DoHProtocol::WIRE.into()])
+        .default_value(DoHProtocol::JSON.into())
+        .help(&format!("DoH Protocol (see '{}')", SUBCOMMAND_LIST_PROVIDERS))
+      )
+      .arg(Arg::with_name(ARG_PROVIDER)
+        .long(ARG_PROVIDER)
+        .required(false)
+        .multiple(false)
+        .value_name(ARG_PROVIDER)
+        .help(&format!("DoH Provider (see '{}')", SUBCOMMAND_LIST_PROVIDERS))
       )
       .arg(Arg::with_name(ARG_VERBOSE)
         .long(ARG_VERBOSE)
@@ -71,6 +92,10 @@ impl<'a> CLI<'a> {
         .multiple(false)
         .help("Don't write anything to standard output (i.e. 'quiet mode')")
       )
+      .subcommand(SubCommand::with_name(SUBCOMMAND_LIST_PROVIDERS)
+        .visible_alias(SUBCOMMAND_ALIAS_LIST_PROVIDERS)
+        .about("Available Providers, by DoH Protocol")
+      )
       .get_matches();
 
     CLI {
@@ -78,9 +103,28 @@ impl<'a> CLI<'a> {
     }
   }
 
+  pub fn is_list_providers(&self) -> bool {
+    match self.arg_matches.subcommand_name() {
+      Some(SUBCOMMAND_LIST_PROVIDERS) => true,
+      None | _ => false
+    }
+  }
+
+  pub fn list_providers(&self) {
+    println!(r#"
+      protocol : providers (default)
+      ============================================================ = = =
+      {}     : {} ({})
+      {}     : {} ({})
+    "#,
+      DoHProtocol::JSON, DoHJsonProvider::default_ids().join(", "), DoHJsonProvider::default_id(),
+      DoHProtocol::WIRE, "NONE", "NONE"
+    );
+  }
+
 }
 
-impl<'a> ConfigProvider for CLI<'a> {
+impl<'a> Config for CLI<'a> {
   fn ipv4(&self) -> Vec<Ipv4Addr> {
     let arg_matches_ref = &self.arg_matches;
     values_t_or_exit!(arg_matches_ref, ARG_IPV4, Ipv4Addr)
@@ -113,13 +157,22 @@ impl<'a> ConfigProvider for CLI<'a> {
       }
     }
   }
+
+  fn protocol(&self) -> DoHProtocol {
+    unimplemented!()
+  }
+
+  fn provider(&self) -> &'static str {
+    unimplemented!()
+  }
+
 }
 
 impl<'a> fmt::Debug for CLI<'a> {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, r#"
+  fn fmt(&self, fmtr: &mut fmt::Formatter) -> fmt::Result {
+    write!(fmtr, r#"
       CLI (ConfigProvider) {{
-        ipv4: {:?},
+        ipv4: {:?},\`
         ipv6: {:?},
         port: {},
         log_filter: {}

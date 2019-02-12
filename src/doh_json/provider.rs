@@ -1,6 +1,6 @@
 //! DoH JSON provider(s)
 
-use core::provider::DoHProvider;
+use core::{provider::DoHProvider, protocol::DoHProtocol};
 use dns::protocol::*;
 use http::{
   method::Method,
@@ -74,7 +74,6 @@ impl DoHJsonProvider {
       headers
     }
   }
-
 }
 
 /// Static `&str` identifier for [Google Public DNS-over-HTTPS](https://developers.google.com/speed/public-dns/docs/dns-over-https) provider
@@ -93,6 +92,10 @@ pub const PROVIDER_NAME_RUBYFISH: &'static str = "rubyfish";
 pub const PROVIDER_NAME_BLAHDNS:  &'static str = "blahdns";
 
 impl DoHProvider for DoHJsonProvider {
+
+  fn protocol() -> DoHProtocol {
+    DoHProtocol::JSON
+  }
 
   fn build_http_request(&self, dns_query: &DnsQuery) -> Result<Request<()>> {
     // Prepare Path and Query parts of the request, combining the Provider "required" parts
@@ -192,6 +195,10 @@ impl DoHProvider for DoHJsonProvider {
     ]
   }
 
+  fn default_id() -> &'static str {
+    PROVIDER_NAME_CLOUDFLARE
+  }
+
 }
 
 impl Default for DoHJsonProvider {
@@ -200,7 +207,7 @@ impl Default for DoHJsonProvider {
   ///
   /// It's OK to pick sides. Plus, Google has already everything.
   fn default() -> Self {
-    DoHJsonProvider::defaults().get(PROVIDER_NAME_CLOUDFLARE).unwrap().to_owned()
+    DoHJsonProvider::defaults().get(DoHJsonProvider::default_id()).unwrap().to_owned()
   }
 }
 

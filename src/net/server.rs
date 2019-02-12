@@ -4,7 +4,7 @@
 
 use std::{net::{Ipv4Addr, Ipv6Addr, UdpSocket}, thread, time::Duration, io::ErrorKind, sync::mpsc::Sender};
 
-use config::config_provider::ConfigProvider;
+use config::config::Config;
 use net::{utils::{bind_udp_sockets, /*bind_tcp_listeners*/}, request::Request};
 use dns;
 
@@ -26,7 +26,7 @@ impl Server {
   ///
   /// * `config` - Configuration to be used by the `DnsServer` when started
   /// * `sender` - Channel sender to "emit" `DnsRequest` after been received and parsed by the Server
-  pub fn new<C: ConfigProvider>(config: &C, sender: Sender<Request>) -> Server {
+  pub fn new(config: &Config, sender: Sender<Request>) -> Server {
     Server {
       ip4s: config.ipv4(),
       ip6s: config.ipv6(),

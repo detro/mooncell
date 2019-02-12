@@ -6,22 +6,33 @@ use std::sync::mpsc::{Sender, Receiver, channel};
 use mooncell::{logging, net::{server::Server, request::Request}, config::{cli::CLI}};
 
 fn main() {
+  // Load CLI configuration and initialize logging
   let cli = CLI::new();
-  println!("{:#?}", cli);
-
   logging::init(&cli);
-  info!("DNS Server starting");
+  trace!("{:#?}", cli);
 
-  let (sender, receiver): (Sender<Request>, Receiver<Request>) = channel();
+  // Figure out if a sub-command was invoked, or we can actually start the server
+  if cli.is_list_providers() {
+    cli.list_providers();
+  } else {
+    info!("DNS Server starting");
 
-  let mut server = Server::new(&cli, sender);
-  server.start();
+    let (sender, receiver): (Sender<Request>, Receiver<Request>) = channel();
 
-  // TODO Temporary: just used to prove cross-thread comms
-  for req in receiver.iter() {
-    debug!("{:#?}", req);
+    let mut server = Server::new(&cli, sender);
+    server.start();
+
+    // TODO Temporary: just used to prove cross-thread comms
+    for req in receiver.iter() {
+      debug!("{:#?}", req);
+    }
+
+    // TODO Build the right DoHResolver, based on the given Config
+    // TODO Create Processor by passing in:
+    //   - Receiver<Request>
+    //   - DoHResolver
+
+    server.await_termination_and_drop();
+    info!("Shutting down");
   }
-
-  server.await_termination_and_drop();
-  info!("Shutting down");
 }

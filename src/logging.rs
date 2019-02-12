@@ -5,9 +5,9 @@ use log4rs::{
   config::{Appender, Config as Log4rsConfig, Logger, Root},
 };
 
-use config::config_provider::ConfigProvider;
+use config::config::Config;
 
-pub fn init<C: ConfigProvider>(config: &C) {
+pub fn init(config: &Config) {
   // TODO Make the list of modules to filter out a bit more flexible
   let log_config = Log4rsConfig::builder()
     .appender(Appender::builder().build("stdout", Box::new(ConsoleAppender::builder().build())))
