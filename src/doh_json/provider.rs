@@ -10,7 +10,7 @@ use http::{
   request::{Request, Builder as RequestBuilder},
   Result,
 };
-use std::{collections::HashMap, str::FromStr, default::Default};
+use std::{collections::HashMap, str::FromStr};
 
 // TODO Add support for optional parameters: hopefully Google and the others have compatible,
 //  optional parameters
@@ -93,10 +93,6 @@ pub const PROVIDER_NAME_BLAHDNS:  &'static str = "blahdns";
 
 impl DoHProvider for DoHJsonProvider {
 
-  fn protocol() -> DoHProtocol {
-    DoHProtocol::JSON
-  }
-
   fn build_http_request(&self, dns_query: &DnsQuery) -> Result<Request<()>> {
     // Prepare Path and Query parts of the request, combining the Provider "required" parts
     // with the actual DNS Query
@@ -131,7 +127,11 @@ impl DoHProvider for DoHJsonProvider {
     req_builder.body(())
   }
 
-  fn defaults() -> HashMap<&'static str, Self> {
+  fn protocol() -> DoHProtocol {
+    DoHProtocol::JSON
+  }
+
+  fn available() -> HashMap<&'static str, Self> {
     let mut providers = HashMap::new();
 
     // Google
@@ -183,32 +183,10 @@ impl DoHProvider for DoHJsonProvider {
     providers
   }
 
-  fn default_ids() -> Vec<&'static str> {
-    vec![
-      PROVIDER_NAME_CLOUDFLARE,
-      PROVIDER_NAME_GOOGLE,
-      PROVIDER_NAME_QUAD9,
-      PROVIDER_NAME_QUAD9_SECURED,
-      PROVIDER_NAME_QUAD9_UNSECURED,
-      PROVIDER_NAME_RUBYFISH,
-      PROVIDER_NAME_BLAHDNS
-    ]
-  }
-
   fn default_id() -> &'static str {
     PROVIDER_NAME_CLOUDFLARE
   }
 
-}
-
-impl Default for DoHJsonProvider {
-
-  /// Default `DoHProvider` is "`cloudflare`"
-  ///
-  /// It's OK to pick sides. Plus, Google has already everything.
-  fn default() -> Self {
-    DoHJsonProvider::defaults().get(DoHJsonProvider::default_id()).unwrap().to_owned()
-  }
 }
 
 #[cfg(test)]
@@ -220,7 +198,7 @@ mod test {
     let example_query = DnsQuery::query(DnsDomainName::from_str("ivandemarino.me.").unwrap(), DnsRecordType::AAAA);
 
     let default_provider: DoHJsonProvider = DoHJsonProvider::default();
-    let cloudflare_provider = DoHJsonProvider::defaults().get(PROVIDER_NAME_CLOUDFLARE).unwrap().to_owned();
+    let cloudflare_provider = DoHJsonProvider::available().get(PROVIDER_NAME_CLOUDFLARE).unwrap().to_owned();
 
     // What's going on here? We are testing the same thing twice, as Cloudflare is also the default provider
     let providers = vec![default_provider, cloudflare_provider];
@@ -241,7 +219,7 @@ mod test {
   #[test]
   fn should_provide_google_provider() {
     let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
-    let default_providers = DoHJsonProvider::defaults();
+    let default_providers = DoHJsonProvider::available();
 
     let provider = default_providers.get(PROVIDER_NAME_GOOGLE).unwrap();
 
@@ -257,7 +235,7 @@ mod test {
   #[test]
   fn should_provide_quad9_provider() {
     let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
-    let default_providers = DoHJsonProvider::defaults();
+    let default_providers = DoHJsonProvider::available();
 
     let provider = default_providers.get(PROVIDER_NAME_QUAD9).unwrap();
 
@@ -273,7 +251,7 @@ mod test {
   #[test]
   fn should_provide_quad9_secured_provider() {
     let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
-    let default_providers = DoHJsonProvider::defaults();
+    let default_providers = DoHJsonProvider::available();
 
     let provider = default_providers.get(PROVIDER_NAME_QUAD9_SECURED).unwrap();
 
@@ -289,7 +267,7 @@ mod test {
   #[test]
   fn should_provide_quad9_unsecured_provider() {
     let example_query = DnsQuery::query(DnsDomainName::from_str("github.com.").unwrap(), DnsRecordType::A);
-    let default_providers = DoHJsonProvider::defaults();
+    let default_providers = DoHJsonProvider::available();
 
     let provider = default_providers.get(PROVIDER_NAME_QUAD9_UNSECURED).unwrap();
 
@@ -305,7 +283,7 @@ mod test {
   #[test]
   fn should_provide_rubyfish_provider() {
     let example_query = DnsQuery::query(DnsDomainName::from_str("apple.com.").unwrap(), DnsRecordType::A);
-    let default_providers = DoHJsonProvider::defaults();
+    let default_providers = DoHJsonProvider::available();
 
     let provider = default_providers.get(PROVIDER_NAME_RUBYFISH).unwrap();
 
@@ -321,7 +299,7 @@ mod test {
   #[test]
   fn should_provide_blahdns_provider() {
     let example_query = DnsQuery::query(DnsDomainName::from_str("apple.com.").unwrap(), DnsRecordType::A);
-    let default_providers = DoHJsonProvider::defaults();
+    let default_providers = DoHJsonProvider::available();
 
     let provider = default_providers.get(PROVIDER_NAME_BLAHDNS).unwrap();
 
@@ -336,14 +314,14 @@ mod test {
 
   #[test]
   fn should_provide_default_provider_ids() {
-    assert_eq!(DoHJsonProvider::default_ids().len(), 7);
-    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_CLOUDFLARE));
-    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_GOOGLE));
-    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_QUAD9));
-    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_QUAD9_SECURED));
-    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_QUAD9_UNSECURED));
-    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_RUBYFISH));
-    assert!(DoHJsonProvider::default_ids().contains(&PROVIDER_NAME_BLAHDNS));
+    assert_eq!(DoHJsonProvider::available_ids().len(), 7);
+    assert!(DoHJsonProvider::available_ids().contains(&PROVIDER_NAME_CLOUDFLARE));
+    assert!(DoHJsonProvider::available_ids().contains(&PROVIDER_NAME_GOOGLE));
+    assert!(DoHJsonProvider::available_ids().contains(&PROVIDER_NAME_QUAD9));
+    assert!(DoHJsonProvider::available_ids().contains(&PROVIDER_NAME_QUAD9_SECURED));
+    assert!(DoHJsonProvider::available_ids().contains(&PROVIDER_NAME_QUAD9_UNSECURED));
+    assert!(DoHJsonProvider::available_ids().contains(&PROVIDER_NAME_RUBYFISH));
+    assert!(DoHJsonProvider::available_ids().contains(&PROVIDER_NAME_BLAHDNS));
   }
 
 }

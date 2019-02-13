@@ -170,7 +170,7 @@ mod test {
 
   #[test]
   fn should_resolve_udp_query_example_com() {
-    let providers = DoHJsonProvider::defaults();
+    let providers = DoHJsonProvider::available();
     let provider = providers.get(provider::PROVIDER_NAME_GOOGLE).unwrap();
 
     let resolver = DoHJsonResolver::new(provider);
@@ -208,7 +208,7 @@ mod test {
 
   #[test]
   fn should_resolve_udp_query_noedns_example_com() {
-    let providers = DoHJsonProvider::defaults();
+    let providers = DoHJsonProvider::available();
     let provider = providers.get(provider::PROVIDER_NAME_QUAD9).unwrap();
 
     let resolver = DoHJsonResolver::new(provider);
@@ -246,7 +246,7 @@ mod test {
 
   #[test]
   fn should_resolve_udp_query_aaaa_www_ivandemarino_me() {
-    let providers = DoHJsonProvider::defaults();
+    let providers = DoHJsonProvider::available();
     let provider = providers.get(provider::PROVIDER_NAME_CLOUDFLARE).unwrap();
 
     let resolver = DoHJsonResolver::new(provider);
