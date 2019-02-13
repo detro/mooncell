@@ -18,6 +18,7 @@ use std::{collections::HashMap, str::FromStr};
 /// Describes a provider of DNS-over-HTTPS services
 #[derive(Debug, Clone)]
 pub struct DoHJsonProvider {
+  id: &'static str,
   scheme: Scheme,
   authority: Authority,
   path_query: PathAndQuery,
@@ -29,11 +30,13 @@ impl DoHJsonProvider {
   ///
   /// # Parameters
   ///
+  /// * `id` - Identifier of this Provider
   /// * `raw_scheme` - `&str` representing the scheme of a URI (ex. "http", "https" or others)
   /// * `raw_authority` - `&str` representing the authority of a URI (ex. "example.com" or "other-example.com:8081")
   /// * `raw_path_query` - `&str` representing the path and query of a URI (ex. "/path/to/file?q1=v1&q2=v2")
-  pub fn from_raw_parts(raw_scheme: &str, raw_authority: &str, raw_path_query: &str) -> DoHJsonProvider {
+  fn from_raw_parts(id: &'static str, raw_scheme: &str, raw_authority: &str, raw_path_query: &str) -> DoHJsonProvider {
     DoHJsonProvider::from_parts(
+      id,
       raw_scheme.parse().unwrap(),
       raw_authority.parse().unwrap(),
       raw_path_query.parse().unwrap(),
@@ -45,12 +48,14 @@ impl DoHJsonProvider {
   ///
   /// # Parameters
   ///
+  /// * `id` - Identifier of this Provider
   /// * `raw_scheme` - `&str` representing the scheme of a URI (ex. "http", "https" or others)
   /// * `raw_authority` - `&str` representing the authority of a URI (ex. "example.com" or "other-example.com:8081")
   /// * `raw_path_query` - `&str` representing the path and query of a URI (ex. "/path/to/file?q1=v1&q2=v2")
   /// * `headers` - an `HeaderMap` as defined by the `http` crate
-  pub fn from_raw_parts_with_headers(raw_scheme: &str, raw_authority: &str, raw_path_query: &str, headers: HeaderMap) -> DoHJsonProvider {
+  fn from_raw_parts_with_headers(id: &'static str, raw_scheme: &str, raw_authority: &str, raw_path_query: &str, headers: HeaderMap) -> DoHJsonProvider {
     DoHJsonProvider::from_parts(
+      id,
       raw_scheme.parse().unwrap(),
       raw_authority.parse().unwrap(),
       raw_path_query.parse().unwrap(),
@@ -62,12 +67,14 @@ impl DoHJsonProvider {
   ///
   /// # Parameters
   ///
+  /// * `id` - Identifier of this Provider
   /// * `scheme` - `Scheme` of a URI (ex. "http", "https" or others)
   /// * `authority` - `Authority` of a URI (ex. "example.com" or "other-example.com:8081")
   /// * `path_query` - `PathAndQuery` of a URI (ex. "/path/to/file?q1=v1&q2=v2")
   /// * `headers` - an `HeaderMap` as defined by the `http` crate
-  pub fn from_parts(scheme: Scheme, authority: Authority, path_query: PathAndQuery, headers: HeaderMap) -> DoHJsonProvider {
+  fn from_parts(id: &'static str, scheme: Scheme, authority: Authority, path_query: PathAndQuery, headers: HeaderMap) -> DoHJsonProvider {
     DoHJsonProvider {
+      id,
       scheme,
       authority,
       path_query,
@@ -92,6 +99,14 @@ pub const PROVIDER_NAME_RUBYFISH: &'static str = "rubyfish";
 pub const PROVIDER_NAME_BLAHDNS:  &'static str = "blahdns";
 
 impl DoHProvider for DoHJsonProvider {
+
+  fn id(&self) -> &'static str {
+    self.id
+  }
+
+  fn protocol(&self) -> DoHProtocol {
+    DoHProtocol::JSON
+  }
 
   fn build_http_request(&self, dns_query: &DnsQuery) -> Result<Request<()>> {
     // Prepare Path and Query parts of the request, combining the Provider "required" parts
@@ -127,15 +142,12 @@ impl DoHProvider for DoHJsonProvider {
     req_builder.body(())
   }
 
-  fn protocol() -> DoHProtocol {
-    DoHProtocol::JSON
-  }
-
   fn available() -> HashMap<&'static str, Self> {
     let mut providers = HashMap::new();
 
     // Google
     providers.insert(PROVIDER_NAME_GOOGLE, DoHJsonProvider::from_raw_parts(
+      PROVIDER_NAME_GOOGLE,
       "https",
       "dns.google.com",
       "/resolve"
@@ -144,6 +156,7 @@ impl DoHProvider for DoHJsonProvider {
     let mut cloudflare_headers = HeaderMap::with_capacity(1);
     cloudflare_headers.insert(header::ACCEPT, "application/dns-json".parse().unwrap());
     providers.insert(PROVIDER_NAME_CLOUDFLARE, DoHJsonProvider::from_raw_parts_with_headers(
+      PROVIDER_NAME_CLOUDFLARE,
       "https",
       "cloudflare-dns.com",
       "/dns-query",
@@ -151,30 +164,35 @@ impl DoHProvider for DoHJsonProvider {
     ));
     // Quad9 recommended
     providers.insert(PROVIDER_NAME_QUAD9, DoHJsonProvider::from_raw_parts(
+      PROVIDER_NAME_QUAD9,
       "https",
       "dns.quad9.net",
       "/dns-query"
     ));
     // Quad9 secured
     providers.insert(PROVIDER_NAME_QUAD9_SECURED, DoHJsonProvider::from_raw_parts(
+      PROVIDER_NAME_QUAD9_SECURED,
       "https",
       "dns9.quad9.net",
       "/dns-query"
     ));
     // Quad9 unsecured
     providers.insert(PROVIDER_NAME_QUAD9_UNSECURED, DoHJsonProvider::from_raw_parts(
+      PROVIDER_NAME_QUAD9_UNSECURED,
       "https",
       "dns10.quad9.net",
       "/dns-query"
     ));
     // Rubyfish
     providers.insert(PROVIDER_NAME_RUBYFISH, DoHJsonProvider::from_raw_parts(
+      PROVIDER_NAME_RUBYFISH,
       "https",
       "dns.rubyfish.cn",
       "/dns-query"
     ));
     // BlahDNS
     providers.insert(PROVIDER_NAME_BLAHDNS, DoHJsonProvider::from_raw_parts(
+      PROVIDER_NAME_BLAHDNS,
       "https",
       "doh-de.blahdns.com",
       "/dns-query"

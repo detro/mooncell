@@ -3,6 +3,7 @@
 use log::LevelFilter;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use core::protocol::DoHProtocol;
+use core::provider::DoHProvider;
 
 /// This trait is implemented by types that _provide configuration_ to the rest of the application.
 pub trait Config {
@@ -21,6 +22,6 @@ pub trait Config {
   /// The DNS-over-HTTPS Protocol to use
   fn protocol(&self) -> DoHProtocol;
 
-  /// The identifier of DNS-over-HTTPS Provider to use
-  fn provider(&self) -> &'static str;
+  /// The DNS-over-HTTPS Provider to use
+  fn provider(&self) -> Option<Box<dyn DoHProvider>>;
 }

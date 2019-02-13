@@ -1,9 +1,10 @@
 #[macro_use] extern crate log;
+extern crate exitcode;
 extern crate mooncell;
 
-use std::sync::mpsc::{Sender, Receiver, channel};
+use std::{sync::mpsc::{Sender, Receiver, channel}, process};
 
-use mooncell::{logging, net::{server::Server, request::Request}, config::{cli::CLI}};
+use mooncell::{logging, net::{server::Server, request::Request}, config::{cli::CLI, config::Config}};
 
 fn main() {
   // Load CLI configuration and initialize logging
@@ -14,6 +15,8 @@ fn main() {
   // Figure out if a sub-command was invoked, or we can actually start the server
   if cli.is_list_providers() {
     cli.list_providers();
+  } else if cli.provider().is_none() {
+    process::exit(exitcode::USAGE);
   } else {
     info!("DNS Server starting");
 

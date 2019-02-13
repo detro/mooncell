@@ -3,10 +3,16 @@
 use core::protocol::DoHProtocol;
 use dns::protocol::DnsQuery;
 use http::{Result, Request};
-use std::{collections::HashMap};
+use std::{collections::HashMap, fmt};
 
 /// Trait defining a provider of DNS-over-HTTPS services
 pub trait DoHProvider {
+
+  /// Provider identifier
+  fn id(&self) -> &str;
+
+  /// Protocol supported by the Provider
+  fn protocol(&self) -> DoHProtocol;
 
   /// Builds an HTTP request combining the information of the `DoHProvider` with the given `DnsQuery`
   ///
@@ -18,9 +24,6 @@ pub trait DoHProvider {
   ///
   /// * `dns_query` - `DnsQuery` that we need to turn into an HTTP request towards the Provider
   fn build_http_request(&self, dns_query: &DnsQuery) -> Result<Request<()>>;
-
-  /// Protocol supported by the given Provider
-  fn protocol() -> DoHProtocol where Self: Sized;
 
   /// Available Providers of DoH services
   ///
@@ -43,4 +46,10 @@ pub trait DoHProvider {
       .expect("There should always be a Provider associated to default ID: this should never happen!")
   }
 
+}
+
+impl fmt::Debug for DoHProvider {
+  fn fmt(&self, fmtr: &mut fmt::Formatter) -> fmt::Result {
+    write!(fmtr, "DoHProvider: {{ protocol: {}, id: {} }}", self.protocol(), self.id())
+  }
 }

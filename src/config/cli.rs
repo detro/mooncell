@@ -69,14 +69,14 @@ impl<'a> CLI<'a> {
         .multiple(false)
         .possible_values(&[DoHProtocol::JSON.into(), DoHProtocol::WIRE.into()])
         .default_value(DoHProtocol::JSON.into())
-        .help(&format!("DoH Protocol (see '{}')", SUBCOMMAND_LIST_PROVIDERS))
+        .help(&format!("DoH Protocol (see subcommand '{}')", SUBCOMMAND_LIST_PROVIDERS))
       )
       .arg(Arg::with_name(ARG_PROVIDER)
         .long(ARG_PROVIDER)
         .required(false)
         .multiple(false)
         .value_name(ARG_PROVIDER)
-        .help(&format!("DoH Provider (see '{}')", SUBCOMMAND_LIST_PROVIDERS))
+        .help(&format!("DoH Provider (see subcommand '{}')", SUBCOMMAND_LIST_PROVIDERS))
       )
       .arg(Arg::with_name(ARG_VERBOSE)
         .long(ARG_VERBOSE)
@@ -117,8 +117,8 @@ impl<'a> CLI<'a> {
       {}     : {} ({})
       {}     : {} ({})
     "#,
-      DoHProtocol::JSON, DoHJsonProvider::default_ids().join(", "), DoHJsonProvider::default_id(),
-      DoHProtocol::WIRE, "NONE", "NONE"
+             DoHProtocol::JSON, DoHJsonProvider::available_ids().join(", "), DoHJsonProvider::default_id(),
+             DoHProtocol::WIRE, "NONE", "NONE"
     );
   }
 
@@ -159,24 +159,36 @@ impl<'a> Config for CLI<'a> {
   }
 
   fn protocol(&self) -> DoHProtocol {
-    unimplemented!()
+    let arg_matches_ref = &self.arg_matches;
+    value_t_or_exit!(arg_matches_ref, ARG_PROTOCOL, DoHProtocol)
   }
 
-  fn provider(&self) -> &'static str {
-    unimplemented!()
+  fn provider(&self) -> Option<Box<dyn DoHProvider>> {
+    match self.protocol() {
+      DoHProtocol::JSON => {
+        let provider_id = self.arg_matches.value_of(ARG_PROVIDER).unwrap_or(DoHJsonProvider::default_id());
+
+        match DoHJsonProvider::available().remove(provider_id) {
+          Some(provider) => Some(Box::new(provider)),
+          None => {
+            error!("Unknown provider '{}': see subcommand '{}'", provider_id, SUBCOMMAND_LIST_PROVIDERS);
+            None
+          }
+        }
+      },
+      DoHProtocol::WIRE => {
+        error!("No providers available for protocol '{}': see subcommand '{}'", DoHProtocol::WIRE, SUBCOMMAND_LIST_PROVIDERS);
+        None
+      },
+    }
   }
 
 }
 
 impl<'a> fmt::Debug for CLI<'a> {
   fn fmt(&self, fmtr: &mut fmt::Formatter) -> fmt::Result {
-    write!(fmtr, r#"
-      CLI (ConfigProvider) {{
-        ipv4: {:?},\`
-        ipv6: {:?},
-        port: {},
-        log_filter: {}
-      }}
-    "#, self.ipv4(), self.ipv6(), self.port(), self.log_filter())
+    write!(fmtr,
+           "CLI (ConfigProvider) {{ ipv4: {:?}, ipv6: {:?}, port: {}, protocol: {}, provider: {:?}, log_filter: {} }}",
+           self.ipv4(), self.ipv6(), self.port(), self.protocol(), self.provider(), self.log_filter())
   }
 }

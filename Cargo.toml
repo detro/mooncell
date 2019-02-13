@@ -9,6 +9,7 @@ authors = ["Ivan De Marino <detronizator@gmail.com>"]
 clap = "2.32.0"
 log = "0.4.6"
 log4rs = "0.8.1"
+exitcode = "1.1.2"
 
 trust-dns-proto = { version = "0.6.1", features = ["dnssec"] }
 
