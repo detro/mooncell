@@ -6,7 +6,14 @@ use core::resolver::DoHResolver;
 
 pub struct Processor {
   receiver: Receiver<Request>,
-  resolver: DoHResolver,
+  resolver: Box<dyn DoHResolver>,
 }
 
-impl Processor {}
+impl Processor {
+  pub fn new(receiver: Receiver<Request>, resolver: Box<dyn DoHResolver>) -> Processor {
+    Processor {
+      receiver,
+      resolver
+    }
+  }
+}
