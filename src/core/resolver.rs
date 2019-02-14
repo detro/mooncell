@@ -3,6 +3,7 @@
 use dns::protocol::{DnsMessage, DnsMessageType};
 use http::Error as HttpError;
 use curl::Error as CurlError;
+use downcast_rs::Downcast;
 use serde_json::Error as SerdeJsonError;
 use std::{fmt, convert};
 
@@ -53,7 +54,7 @@ impl convert::From<CurlError> for DoHResolutionError {
 }
 
 /// Trait defining a _resolver_ of `DnsMessage` queries
-pub trait DoHResolver {
+pub trait DoHResolver: Downcast {
 
   /// Resolves a DNS Query and returns a DNS Response
   ///
@@ -87,3 +88,5 @@ pub trait DoHResolver {
   }
 
 }
+
+impl_downcast!(DoHResolver);

@@ -1,12 +1,13 @@
 //! Trait definition for DNS-over-HTTPS provider
 
 use core::protocol::DoHProtocol;
+use downcast_rs::Downcast;
 use dns::protocol::DnsQuery;
 use http::{Result, Request};
 use std::{collections::HashMap, fmt};
 
 /// Trait defining a provider of DNS-over-HTTPS services
-pub trait DoHProvider {
+pub trait DoHProvider: Downcast {
 
   /// Provider identifier
   fn id(&self) -> &str;
@@ -53,3 +54,5 @@ impl fmt::Debug for DoHProvider {
     write!(fmtr, "DoHProvider: {{ protocol: {}, id: {} }}", self.protocol(), self.id())
   }
 }
+
+impl_downcast!(DoHProvider);

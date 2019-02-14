@@ -1,3 +1,7 @@
+// Downcasting utility
+#[macro_use]
+extern crate downcast_rs;
+
 // CLI arguments gathering
 #[macro_use] extern crate clap;
 

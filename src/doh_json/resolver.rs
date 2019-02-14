@@ -15,14 +15,14 @@ type Result<T> = std::result::Result<T, DoHResolutionError>;
 ///
 /// This is an "Authoritative" resolver: responses are always coming from the given provider,
 /// not the cache. As such, responses will always have the "authoritative" bit on.
-struct DoHJsonResolver<'a> {
-  provider: &'a DoHJsonProvider,
+pub struct DoHJsonResolver {
+  provider: DoHJsonProvider,
   pool: ThreadPool
 }
 
-impl <'a> DoHJsonResolver<'a> {
+impl DoHJsonResolver {
 
-  fn new(provider: &DoHJsonProvider) -> DoHJsonResolver {
+  pub fn new(provider: DoHJsonProvider) -> DoHJsonResolver {
     let pool = ThreadPoolBuilder::new()
       .num_threads(num_cpus::get())
       .thread_name("DoHJsonResolver Thread Pool".into())
@@ -36,7 +36,7 @@ impl <'a> DoHJsonResolver<'a> {
 
 }
 
-impl <'a> DoHResolver for DoHJsonResolver<'a> {
+impl DoHResolver for DoHJsonResolver {
 
   fn resolve_query(&self, req_dns_msg: &DnsMessage) -> Result<DnsMessage> {
     // Begin preparing response DNS Message
@@ -170,8 +170,7 @@ mod test {
 
   #[test]
   fn should_resolve_udp_query_example_com() {
-    let providers = DoHJsonProvider::available();
-    let provider = providers.get(provider::PROVIDER_NAME_GOOGLE).unwrap();
+    let provider = DoHJsonProvider::available().remove(provider::PROVIDER_NAME_GOOGLE).unwrap();
 
     let resolver = DoHJsonResolver::new(provider);
 
@@ -208,8 +207,7 @@ mod test {
 
   #[test]
   fn should_resolve_udp_query_noedns_example_com() {
-    let providers = DoHJsonProvider::available();
-    let provider = providers.get(provider::PROVIDER_NAME_QUAD9).unwrap();
+    let provider = DoHJsonProvider::available().remove(provider::PROVIDER_NAME_QUAD9).unwrap();
 
     let resolver = DoHJsonResolver::new(provider);
 
@@ -246,8 +244,7 @@ mod test {
 
   #[test]
   fn should_resolve_udp_query_aaaa_www_ivandemarino_me() {
-    let providers = DoHJsonProvider::available();
-    let provider = providers.get(provider::PROVIDER_NAME_CLOUDFLARE).unwrap();
+    let provider = DoHJsonProvider::available().remove(provider::PROVIDER_NAME_CLOUDFLARE).unwrap();
 
     let resolver = DoHJsonResolver::new(provider);
 
