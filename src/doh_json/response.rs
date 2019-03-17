@@ -392,8 +392,8 @@ mod test {
     // Check EDNS
     assert!(dns_msg.edns().is_some());
     assert_eq!(dns_msg.edns().unwrap().options().options().len(), 1);
-    assert!(dns_msg.edns().unwrap().option(&DnsRDataOPTCode::Subnet).is_some());
-    let edns_opt = dns_msg.edns().unwrap().option(&DnsRDataOPTCode::Subnet).unwrap();
+    assert!(dns_msg.edns().unwrap().option(DnsRDataOPTCode::Subnet).is_some());
+    let edns_opt = dns_msg.edns().unwrap().option(DnsRDataOPTCode::Subnet).unwrap();
     match edns_opt {
       DnsRDataOPTOption::Unknown(len, data) => {
         assert_eq!(data.len(), *len as usize);
