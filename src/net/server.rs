@@ -2,11 +2,11 @@
 //!
 //! It's role is to handle the networking part of receiving a DNS queries
 
-use std::{net::{Ipv4Addr, Ipv6Addr, UdpSocket}, thread, time::Duration, io::ErrorKind, sync::mpsc::Sender};
-
 use config::config::Config;
 use net::{utils::{bind_udp_sockets, /*bind_tcp_listeners*/}, request::Request};
 use dns;
+use crossbeam_channel::Sender as XBeamSender;
+use std::{net::{Ipv4Addr, Ipv6Addr, UdpSocket}, thread, time::Duration, io::ErrorKind};
 
 /// The DNS Server that listens for DNS queries over UDP or TCP requests.
 #[derive(Debug)]
@@ -15,7 +15,7 @@ pub struct Server {
   ip6s: Vec<Ipv6Addr>,
   port: u16,
   threads: Vec<thread::JoinHandle<()>>,
-  sender: Sender<Request>,
+  sender: XBeamSender<Request>,
 }
 
 impl Server {
@@ -26,7 +26,7 @@ impl Server {
   ///
   /// * `config` - Configuration to be used by the `DnsServer` when started
   /// * `sender` - Channel sender to "emit" `DnsRequest` after been received and parsed by the Server
-  pub fn new(config: &Config, sender: Sender<Request>) -> Server {
+  pub fn new(config: &Config, sender: XBeamSender<Request>) -> Server {
     Server {
       ip4s: config.ipv4(),
       ip6s: config.ipv6(),

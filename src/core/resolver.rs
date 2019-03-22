@@ -12,7 +12,7 @@ type Result<T> = std::result::Result<T, DoHResolutionError>;
 /// A type of `Error` emitted by `Resolver`
 ///
 /// It contains a description and an optional `HttpError` that might have caused it
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DoHResolutionError {
   desc: String,
 }
@@ -87,6 +87,15 @@ pub trait DoHResolver: Downcast {
     }
   }
 
+  /// Create a clone of the object implementing this Trait, and return it Box-ed
+  fn box_clone(&self) -> Box<DoHResolver + Send>;
+
 }
 
 impl_downcast!(DoHResolver);
+
+impl Clone for Box<DoHResolver + Send> {
+  fn clone(&self) -> Self {
+    self.box_clone()
+  }
+}

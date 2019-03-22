@@ -1,10 +1,11 @@
 #[macro_use] extern crate log;
 extern crate exitcode;
+extern crate crossbeam_channel;
 extern crate mooncell;
 
-use std::{sync::mpsc::{Sender, Receiver, channel}, process};
-
 use mooncell::{logging, net::{server::Server, request::Request}, config::{cli::CLI, config::Config}, core::processor::Processor};
+use crossbeam_channel::{Sender as XBeamSender, Receiver as XBeamReceiver, unbounded};
+use std::process;
 
 fn main() {
   // Load CLI configuration and initialize logging
@@ -19,26 +20,24 @@ fn main() {
     // No provider was configured: wrong usage
     process::exit(exitcode::USAGE);
   } else {
-    // OK, Server can run!
-    info!("DNS Server starting");
+    info!("Starting...");
 
-    let (sender, receiver): (Sender<Request>, Receiver<Request>) = channel();
-    let processor = Processor::new(receiver, cli.resolver());
+    // Create the channel for Server -> Processor communication
 
+    let (sender, receiver): (XBeamSender<Request>, XBeamReceiver<Request>) = unbounded();
+    // Create Processor (i.e. "consumer")
+    let mut processor = Processor::new(receiver, cli.resolver());
+    // Create Server (i.e. "producer")
     let mut server = Server::new(&cli, sender);
+
+    // TODO Register signal handler to:
+    //  1. stop server
+    //  2. stop processor
+    //  3. info!("... shut down");
+
+    processor.start();
     server.start();
 
-//    // TODO Temporary: just used to prove cross-thread comms
-//    for req in receiver.iter() {
-//      debug!("{:#?}", req);
-//    }
-
-    // TODO Build the right DoHResolver, based on the given Config
-    // TODO Create Processor by passing in:
-    //   - Receiver<Request>
-    //   - DoHResolver
-
     server.await_termination_and_drop();
-    info!("Shutting down");
   }
 }

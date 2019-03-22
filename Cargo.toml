@@ -12,6 +12,8 @@ log4rs = "0.8.1"
 exitcode = "1.1.2"
 downcast-rs = "1.0.3"
 
+crossbeam-channel = "0.3.8"
+
 trust-dns-proto = { version = "0.7.1", features = ["dnssec"] }
 
 http = "0.1.16"

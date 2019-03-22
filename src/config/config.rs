@@ -26,7 +26,7 @@ pub trait Config {
   fn provider(&self) -> Option<Box<dyn DoHProvider>>;
 
   /// The DNS-over-HTTPS Resolver to use
-  fn resolver(&self) -> Box<dyn DoHResolver> {
+  fn resolver(&self) -> Box<DoHResolver + Send> {
     match self.protocol() {
       DoHProtocol::JSON => match self.provider() {
         Some(provider) => Box::new(DoHJsonResolver::new(*provider.downcast::<DoHJsonProvider>().unwrap())),

@@ -27,6 +27,7 @@ extern crate ipnet;
 // Threading
 extern crate threadpool;
 extern crate num_cpus;
+extern crate crossbeam_channel;
 
 pub mod config;
 pub mod dns;

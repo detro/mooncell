@@ -15,6 +15,7 @@ type Result<T> = std::result::Result<T, DoHResolutionError>;
 ///
 /// This is an "Authoritative" resolver: responses are always coming from the given provider,
 /// not the cache. As such, responses will always have the "authoritative" bit on.
+#[derive(Debug, Clone)]
 pub struct DoHJsonResolver {
   provider: DoHJsonProvider,
   pool: ThreadPool
@@ -80,6 +81,10 @@ impl DoHResolver for DoHJsonResolver {
       });
 
     Ok(res_dns_msg)
+  }
+
+  fn box_clone(&self) -> Box<DoHResolver + Send> {
+    Box::new((*self).clone())
   }
 
 }
