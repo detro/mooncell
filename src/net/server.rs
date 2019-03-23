@@ -87,7 +87,7 @@ impl Server {
         loop {
           match thread_udp_sock.recv_from(&mut buf) {
             Ok((amount, src)) => {
-              trace!("Received {} bytes from {}", amount, src);
+              debug!("Received {} bytes via UDP datagram from '{}'", amount, src);
 
               match dns::protocol::dns_message_from_bytes(&buf) {
                 Ok(dns_message) => {
@@ -104,14 +104,16 @@ impl Server {
               };
             }
             Err(e) => match e.kind() {
-              ErrorKind::WouldBlock => {
+              ErrorKind::WouldBlock | ErrorKind::TimedOut => {
                 // This happens when `recv_from` has timed out: unless `DnsServer` has been
-                // stopped, we need to resume listening for requests
+                // stopped, we need to resume listening for requests.
+                // Why 2 errors? Because on Unix systems the error would be `WouldBlock`, while
+                // on Windows systems the error would be `TimedOut`
 
                 // TODO call `break` here once `DnsServer::stop()` has been called
-              }
+              },
               _ => {
-                error!("Error receiving: {}", e);
+                error!("Error receiving: {:?} {}", e.kind(), e);
               }
             }
           }
@@ -124,7 +126,7 @@ impl Server {
   ///
   /// The DnsServer has internal threads and so this will wait for them to be terminated,
   /// and then drop this server (because ownership is needed to call `std::thread::JoinHandle::join()`.
-  pub fn await_termination_and_drop(self) {
+  pub fn await_termination(self) {
     for t in self.threads {
       t.join().expect("Unable to join thread while awaiting termination");
     }
