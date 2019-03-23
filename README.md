@@ -8,15 +8,18 @@ It receives DNS requests (over UDP and TCP) and resolves them using a user selec
 
 ## Requirements for `1.0`
 
-* [ ] Full end-to-end resolution
+* [x] Full end-to-end resolution
 * [x] Configurable port to listen on
 * [x] Support for UDP requests
 * [ ] Support for TCP requests
 * [x] Built in list of providers to pick from
 * [x] DNS-over-HTTPS via JSON
+* [ ] Handle resolution errors by returning an empty response
 
 ## Follow-up features
 
+* [ ] Switch to Rust 2018
+* [ ] Adopt Rust official tooling for code formatting/styling
 * [ ] A configurable, local cache (in memory to begin with, then look into file backed)
 * [ ] DNS-over-HTTPS via binary message
 * [ ] User-configurable provider
@@ -54,3 +57,11 @@ It receives DNS requests (over UDP and TCP) and resolves them using a user selec
 1. Install OpenSSL for Windows 64 bit via the [large dev binaries](http://slproweb.com/products/Win32OpenSSL.html), or in one of the other possible, painful ways
 2. Set varialbe `set OPENSSL_DIR=c:\OpenSSL-Win64` (assuming you installed it in the default path)
 3. `cargo build` should now work
+
+## Personal notes
+
+* Both `Processor` and `Server` are services (similar to Guava services): 
+  you are suppose to start them, stop them and (optionally) wait for them to terminate.
+  I think there is a good case here for implementing a tiny crate that provides Trait(s) for services _a la_ Guava.
+* I made everything with Threads, but by the end I expect to rewrite everything using proper Rust **async/await**.
+  I just could not surmount the Tokio + Hyper learning curve while also doing the same for the Rust language itself.
