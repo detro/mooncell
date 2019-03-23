@@ -7,7 +7,8 @@ use threadpool::{ThreadPool, Builder as ThreadPoolBuilder};
 use num_cpus;
 use curl::easy::{Easy as CurlEasy, HttpVersion as CurlHttpVersion, List as CurlList};
 use http::{Version as HttpVersion, Request as HttpRequest, HeaderMap as HttpHeaderMap};
-use std::{sync::mpsc::channel, time::Duration};
+use crossbeam_channel::bounded;
+use std::time::Duration;
 
 type Result<T> = std::result::Result<T, DoHResolutionError>;
 
@@ -49,7 +50,7 @@ impl DoHResolver for DoHJsonResolver {
 
     // Execute all queries in parallel
     let queries_count = req_dns_msg.queries().len();
-    let (tx, rx) = channel();
+    let (tx, rx) = bounded(queries_count);
     for query in req_dns_msg.queries() {
       let tx = tx.clone();
       let provider = self.provider.clone();

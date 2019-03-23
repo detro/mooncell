@@ -1,8 +1,6 @@
 //! Utility methods for networking
 
-use std::{
-  net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs, UdpSocket, TcpListener}
-};
+use std::{net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs, UdpSocket, TcpListener}};
 
 /// Binds the given addresses to `UdpSocket`s
 ///

@@ -2,8 +2,8 @@
 //!
 //! It's role is to wrap the received DNS query and provide a network-abstract way to respond back
 
-use std::net::{SocketAddr, TcpStream, UdpSocket};
 use dns::protocol::{DnsMessage, DnsMessageType, dns_message_to_bytes};
+use std::net::{SocketAddr, TcpStream, UdpSocket};
 
 /// The type of `DnsRequest`
 #[derive(Debug)]
