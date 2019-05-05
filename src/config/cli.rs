@@ -1,10 +1,12 @@
 //! Command Line Interface implementation of `Config`
 
-use clap::{App, Arg, ArgMatches, SubCommand};
-use log::LevelFilter;
-use config::{defaults, config::Config};
-use core::{protocol::DoHProtocol, provider::DoHProvider};
-use doh_json::provider::DoHJsonProvider;
+use super::{defaults, config::Config};
+use crate::core::{protocol::DoHProtocol, provider::DoHProvider};
+use crate::doh_json::provider::DoHJsonProvider;
+
+use clap::*;
+use log::*;
+
 use std::{net::{Ipv4Addr, Ipv6Addr}, fmt};
 
 const ARG_IPV4: &'static str = "ipv4";

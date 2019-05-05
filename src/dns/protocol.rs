@@ -5,10 +5,6 @@
 //! in regards of **serde**: to be able to use some `trust_dns_proto` types for serialization and
 //! deserialization, a [special workaround](https://serde.rs/remote-derive.html) is needed.
 
-pub use trust_dns_proto::error::{
-  ProtoError as DnsProtoError,
-  ProtoErrorKind as DnsProtoErrorKind,
-};
 pub use trust_dns_proto::{
   op::{
     header::MessageType as DnsMessageType,
@@ -27,9 +23,12 @@ pub use trust_dns_proto::{
     record_data::RData as DnsRData,
     rdata::opt::{OPT as DnsRDataOPT, EdnsCode as DnsRDataOPTCode, EdnsOption as DnsRDataOPTOption},
   },
+  serialize::binary::{BinDecodable, BinEncodable},
+  error::{
+    ProtoError as DnsProtoError,
+    ProtoErrorKind as DnsProtoErrorKind,
+  },
 };
-
-use trust_dns_proto::serialize::binary::{BinDecodable, BinEncodable};
 use serde::{ser::Serializer, de::{Deserialize, Deserializer}};
 
 /// Converts an array of raw bytes into a `DnsMessage`

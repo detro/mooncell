@@ -1,6 +1,7 @@
 //! Trait definition for response to DNS-over-HTTPS requests
 
-use dns::protocol::*;
+use crate::dns::protocol::*;
+
 use std::{str::FromStr, string::ToString};
 
 /// Trait defining a _response_ to a DNS Message query

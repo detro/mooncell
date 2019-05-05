@@ -1,7 +1,8 @@
 //! DoH JSON provider(s)
 
-use core::{provider::DoHProvider, protocol::DoHProtocol};
-use dns::protocol::*;
+use crate::core::{provider::DoHProvider, protocol::DoHProtocol};
+use crate::dns::protocol::*;
+
 use http::{
   method::Method,
   version::Version,
@@ -10,6 +11,7 @@ use http::{
   request::{Request, Builder as RequestBuilder},
   Result,
 };
+
 use std::{collections::HashMap, str::FromStr};
 
 // TODO Add support for optional parameters: hopefully Google and the others have compatible,

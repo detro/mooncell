@@ -2,13 +2,15 @@
 //!
 //! Based on [Serde JSON](https://crates.io/crates/serde_json).
 
-pub use serde_json::Error as DoHParseError;
+use crate::core::response::DoHResponse;
+use crate::dns::protocol::*;
 
-use core::response::DoHResponse;
-use dns::protocol::*;
+use log::*;
+use serde::{ser::{Serializer}, de::{Deserialize, Deserializer}};
+use serde_derive::{Serialize, Deserialize};
 use serde_json::{self, Value};
-use serde::{ser::Serializer, de::{Deserialize, Deserializer}};
 use ipnet::IpNet;
+
 use std::{str::FromStr, string::ToString, collections::HashMap, net::{Ipv4Addr, Ipv6Addr}};
 
 /// Represents the deserialized response body for a DNS-over-HTTPS JSON request
@@ -101,23 +103,25 @@ impl DoHResponse for DoHJsonResponse {
       match r_type {
         DnsRecordType::A => {
           let r_ipv4addr = Ipv4Addr::from_str(answer.data.as_ref()).unwrap();
-          res_dns_msg.add_answer(DnsRecord::from_rdata(r_name, r_ttl, r_type, DnsRData::A(r_ipv4addr)));
+          res_dns_msg.add_answer(DnsRecord::from_rdata(r_name, r_ttl, DnsRData::A(r_ipv4addr)));
         },
         DnsRecordType::AAAA => {
           let r_ipv6addr = Ipv6Addr::from_str(answer.data.as_ref()).unwrap();
-          res_dns_msg.add_answer(DnsRecord::from_rdata(r_name, r_ttl, r_type, DnsRData::AAAA(r_ipv6addr)));
+          res_dns_msg.add_answer(DnsRecord::from_rdata(r_name, r_ttl, DnsRData::AAAA(r_ipv6addr)));
         },
         DnsRecordType::CNAME => {
           let r_cname = DnsDomainName::from_str(answer.data.as_ref()).unwrap();
-          res_dns_msg.add_answer(DnsRecord::from_rdata(r_name, r_ttl, r_type, DnsRData::CNAME(r_cname)));
+          res_dns_msg.add_answer(DnsRecord::from_rdata(r_name, r_ttl, DnsRData::CNAME(r_cname)));
         },
         DnsRecordType::NS => {
+          // TODO ?
           let r_cname = DnsDomainName::from_str(answer.data.as_ref()).unwrap();
-          res_dns_msg.add_answer(DnsRecord::from_rdata(r_name, r_ttl, r_type, DnsRData::NS(r_cname)));
+          res_dns_msg.add_answer(DnsRecord::from_rdata(r_name, r_ttl, DnsRData::NS(r_cname)));
         },
         DnsRecordType::PTR => {
+          // TODO ?
           let r_cname = DnsDomainName::from_str(answer.data.as_ref()).unwrap();
-          res_dns_msg.add_answer(DnsRecord::from_rdata(r_name, r_ttl, r_type, DnsRData::PTR(r_cname)));
+          res_dns_msg.add_answer(DnsRecord::from_rdata(r_name, r_ttl, DnsRData::PTR(r_cname)));
         },
         _ => {
           error!("Unsupported DNS Answer Record type: {}", r_type);
@@ -218,7 +222,7 @@ fn edns_from_client_subnet(req_subnet_prefix_len: u8, res_subnet: &IpNet) -> Dns
 
   let ttl = 0u32;
   let rdata = DnsRData::OPT(DnsRDataOPT::new(rdata_options));
-  let opt_record = DnsRecord::from_rdata(DnsDomainName::root(), ttl, DnsRecordType::OPT, rdata);
+  let opt_record = DnsRecord::from_rdata(DnsDomainName::root(), ttl, rdata);
 
   // Generate EDNS from OPT Record
   DnsEdns::from(&opt_record)
@@ -254,6 +258,8 @@ impl DoHJsonAnswer {
     DnsRecordType::A
   }
 }
+
+pub use serde_json::Error as DoHParseError;
 
 #[cfg(test)]
 mod test {

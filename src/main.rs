@@ -1,10 +1,20 @@
-#[macro_use] extern crate log;
-extern crate exitcode;
-extern crate crossbeam_channel;
-extern crate mooncell;
+mod config;
+mod core;
+mod dns;
+mod doh_json;
+mod doh_wire;
+mod net;
+mod logging;
 
-use mooncell::{logging, net::{server::Server, request::Request}, config::{cli::CLI, config::Config}, core::processor::Processor};
+use crate::net::{server::Server, request::Request};
+use crate::config::{cli::CLI, config::Config};
+use crate::core::processor::Processor;
+
+use log::*;
 use crossbeam_channel::{Sender as XBeamSender, Receiver as XBeamReceiver, self as xbeam_channel};
+use srvzio::Service;
+use exitcode;
+
 use std::process;
 
 fn main() {
@@ -23,24 +33,18 @@ fn main() {
     info!("Starting...");
 
     // Create the channel for Server -> Processor communication
-
     let (sender, receiver): (XBeamSender<Request>, XBeamReceiver<Request>) = xbeam_channel::unbounded();
-    // Create Processor (i.e. "consumer")
-    let mut processor = Processor::new(receiver, cli.resolver());
-    // Create Server (i.e. "producer")
-    let mut server = Server::new(&cli, sender);
+    let mut srv_mgr = srvzio::ServiceManager::new();
 
-    // TODO Register signal handler to:
-    //  1. stop server
-    //  2. stop processor
-    //  3. info!("... shut down");
+    // Create Processor: the "consumer" of requests
+    srv_mgr.register(Box::new(Processor::new(receiver, cli.resolver())));
+    // Create Server: the "producer" of requests
+    srv_mgr.register(Box::new(Server::new(&cli, sender)));
 
-    // Launch key services
-    processor.start();
-    server.start();
+    srv_mgr.start_and_await();
 
-    // Graceful termination
-    server.await_termination();
-    processor.await_termination();
+    srv_mgr.await_termination_signal_then_stop();
+
+    info!("... Terminated.");
   }
 }

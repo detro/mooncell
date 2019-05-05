@@ -2,7 +2,10 @@
 //!
 //! It's role is to wrap the received DNS query and provide a network-abstract way to respond back
 
-use dns::protocol::{DnsMessage, DnsMessageType, dns_message_to_bytes};
+use crate::dns::protocol::{DnsMessage, DnsMessageType, dns_message_to_bytes};
+
+use log::*;
+
 use std::net::{SocketAddr, TcpStream, UdpSocket};
 
 /// The type of `DnsRequest`

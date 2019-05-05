@@ -1,10 +1,12 @@
 //! Trait definition for resolver of `DnsMessage` requests via DNS-over-HTTPS
 
-use dns::protocol::{DnsMessage, DnsMessageType};
+use crate::dns::protocol::{DnsMessage, DnsMessageType};
+
 use http::Error as HttpError;
 use curl::Error as CurlError;
-use downcast_rs::Downcast;
+use downcast_rs::*;
 use serde_json::Error as SerdeJsonError;
+
 use std::{fmt, convert};
 
 type Result<T> = std::result::Result<T, DoHResolutionError>;

@@ -2,11 +2,17 @@
 //!
 //! It's role is to handle the networking part of receiving a DNS queries
 
-use config::config::Config;
-use net::{utils::{bind_udp_sockets, /*bind_tcp_listeners*/}, request::Request};
-use dns;
+use crate::config::config::Config;
+use super::{utils::{bind_udp_sockets, /*bind_tcp_listeners*/}, request::Request};
+use crate::dns;
+
+use log::*;
 use crossbeam_channel::Sender as XBeamSender;
+use srvzio;
+
 use std::{net::{Ipv4Addr, Ipv6Addr, UdpSocket}, thread, time::Duration, io::ErrorKind};
+
+const SERVER_SERVICE_NAME: &'static str = "Server";
 
 /// The DNS Server that listens for DNS queries over UDP or TCP requests.
 #[derive(Debug)]
@@ -16,6 +22,48 @@ pub struct Server {
   port: u16,
   threads: Vec<thread::JoinHandle<()>>,
   sender: XBeamSender<Request>,
+  status: srvzio::ServiceStatusFlag,
+}
+
+impl srvzio::Service for Server {
+
+  fn name(&self) -> &'static str {
+    SERVER_SERVICE_NAME
+  }
+
+
+  fn start(&mut self) {
+    self.status.starting();
+
+    // Bind TCP listeners and start dedicated threads to handle requests (one thread per listener)
+    // TODO Implement TCP support
+//    let tcp_listeners = bind_tcp_listeners(&self.ip4s, &self.ip6s, &self.port);
+//    let threads = self.start_tcp_threads(tcp_listeners);
+
+    // Bind UDP sockets and start dedicated threads to listen for requests (one thread per socket)
+    let udp_sockets = bind_udp_sockets(&self.ip4s, &self.ip6s, &self.port);
+    let threads = self.start_udp_threads(udp_sockets);
+
+    self.threads.extend(threads);
+  }
+
+  fn await_started(&mut self) {
+    while !self.status.is_started() {}
+  }
+
+  fn stop(&mut self) {
+    trace!("Server should now stop...");
+    self.status.stopping();
+  }
+
+  fn await_stopped(&mut self) {
+    while let Some(t) = self.threads.pop() {
+      t.join()
+        .expect("A Server's thread panicked upon termination");
+    }
+
+    self.status.stopped();
+  }
 }
 
 impl Server {
@@ -33,24 +81,8 @@ impl Server {
       port: config.port(),
       threads: Vec::with_capacity(config.ipv4().len() + config.ipv6().len()),
       sender,
+      status: srvzio::ServiceStatusFlag::default(),
     }
-  }
-
-  /// Start the `DnsServer`
-  ///
-  /// The server binds to the IPs and ports (based on the given configuration) and
-  /// it spawns a dedicated thread per binding.
-  pub fn start(&mut self) {
-    // Bind TCP listeners and start dedicated threads to handle requests (one thread per listener)
-    // TODO Implement TCP support
-//    let tcp_listeners = bind_tcp_listeners(&self.ip4s, &self.ip6s, &self.port);
-//    let threads = self.start_tcp_threads(tcp_listeners);
-
-    // Bind UDP sockets and start dedicated threads to listen for requests (one thread per socket)
-    let udp_sockets = bind_udp_sockets(&self.ip4s, &self.ip6s, &self.port);
-    let threads = self.start_udp_threads(udp_sockets);
-
-    self.threads.extend(threads);
   }
 
   /// Spawn threads dedicated to handle `UdpSocket` traffic
@@ -69,10 +101,10 @@ impl Server {
   fn start_udp_threads(&mut self, udp_sockets: Vec<UdpSocket>) -> Vec<thread::JoinHandle<()>> {
     // Map the bound sockets to threads, so we can later on use their `JoinHandle` to terminate them
     udp_sockets.iter().enumerate().map(|(idx, udp_sock)| {
-      // This creates a clone that refers to the underlying socket, but that we can use
-      // to move to another thread.
+
       let thread_udp_sock = udp_sock.try_clone().unwrap();
       let thread_udp_sender = self.sender.clone();
+      let status = self.status.clone();
 
       // Launch a thread per socket we are listening on
       thread::Builder::new().name(format!("udp_socket_thread_{}", idx)).spawn(move || {
@@ -80,8 +112,10 @@ impl Server {
 
         // Set read timeout on the UDP socket (so we can actually stop this thread)
         thread_udp_sock
-          .set_read_timeout(Some(Duration::from_secs(30))) //< TODO Make this configurable
+          .set_read_timeout(Some(Duration::from_secs(10))) //< TODO Make this configurable
           .expect("Unable to set read timeout on UDP socket");
+
+        status.started();
 
         trace!("Waiting for UDP datagram...");
         loop {
@@ -105,12 +139,15 @@ impl Server {
             }
             Err(e) => match e.kind() {
               ErrorKind::WouldBlock | ErrorKind::TimedOut => {
-                // This happens when `recv_from` has timed out: unless `DnsServer` has been
+                // NOTE: This happens when `recv_from` has timed out: unless `DnsServer` has been
                 // stopped, we need to resume listening for requests.
                 // Why 2 errors? Because on Unix systems the error would be `WouldBlock`, while
                 // on Windows systems the error would be `TimedOut`
 
-                // TODO call `break` here once `DnsServer::stop()` has been called
+                if status.is_stopping() {
+                  trace!("Server is done running: stop listening for requests");
+                  break;
+                }
               },
               _ => {
                 error!("Error receiving: {:?} {}", e.kind(), e);
@@ -120,23 +157,6 @@ impl Server {
         }
       }).expect("Unable to spawn thread for UDP bound socket")
     }).collect()
-  }
-
-  /// Await that the DnsServer terminates and drop it
-  ///
-  /// The DnsServer has internal threads and so this will wait for them to be terminated,
-  /// and then drop this server (because ownership is needed to call `std::thread::JoinHandle::join()`.
-  pub fn await_termination(self) {
-    for t in self.threads {
-      t.join().expect("Unable to join thread while awaiting termination");
-    }
-  }
-
-  /// Stop the server
-  ///
-  /// TODO Implement ability to 'stop' the server (by stopping the threads)
-  pub fn stop(&mut self) {
-    unimplemented!();
   }
 
 }

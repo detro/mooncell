@@ -1,11 +1,11 @@
+use crate::config::config::Config;
+
 use log::LevelFilter;
 use log4rs::{
   self,
   append::console::ConsoleAppender,
   config::{Appender, Config as Log4rsConfig, Logger, Root},
 };
-
-use config::config::Config;
 
 pub fn init(config: &Config) {
   // TODO Make the list of modules to filter out a bit more flexible

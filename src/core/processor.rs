@@ -1,14 +1,19 @@
 //! Processing of received requests
 
-use net::request::Request;
-use core::resolver::DoHResolver;
+use crate::net::request::Request;
+use super::resolver::DoHResolver;
+
+use log::*;
 use threadpool::{Builder as ThreadPoolBuilder, ThreadPool};
 use num_cpus;
 use crossbeam_channel::{Receiver as XBeamReceiver, RecvTimeoutError as XBeamRecvTimeoutError};
-use std::{thread, time::Duration, sync::{Arc, atomic::{AtomicBool, Ordering}}};
+use srvzio;
 
+use std::{thread, time::Duration};
+
+const PROCESSOR_SERVICE_NAME: &'static str = "Processor";
 const PROCESSOR_RECEIVER_THREAD_NAME: &'static str = "processor_receiver_thread";
-const PROCESSOR_RESOLVER_THREADPOOL_NAME: &'static str = "processor_resolver_threadpool";
+const PROCESSOR_RESOLVER_THREAD_NAME: &'static str = "processor_resolver_thread";
 const PROCESSOR_THREADS_COUNT_CPU_MULTIPLIER: usize = 4;
 const PROCESSOR_RECEIVER_TIMEOUT_SEC: u64 = 10;
 
@@ -23,8 +28,8 @@ const PROCESSOR_RECEIVER_TIMEOUT_SEC: u64 = 10;
 pub struct Processor {
   receiver: XBeamReceiver<Request>,
   resolver: Box<DoHResolver + Send>,
-  is_running: Arc<AtomicBool>,
-  receiver_thread_handle: Option<thread::JoinHandle<()>>,
+  status: srvzio::ServiceStatusFlag,
+  receiver_thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Processor {
@@ -38,50 +43,56 @@ impl Processor {
     Processor {
       receiver,
       resolver,
-      is_running: Arc::new(AtomicBool::new(false)),
-      receiver_thread_handle: None,
+      status: srvzio::ServiceStatusFlag::default(),
+      receiver_thread: None,
     }
   }
 
-  /// Start the Processor
-  ///
-  /// NOTE: This method is asynchronous (i.e. non blocking)
-  pub fn start(&mut self) {
-    // Start the Processor
-    self.do_start_running();
+}
+
+impl srvzio::Service for Processor {
+
+  fn name(&self) -> &'static str {
+    PROCESSOR_SERVICE_NAME
+  }
+
+
+  fn start(&mut self) {
+    self.status.starting();
 
     let receiver = self.receiver.clone();
     let resolver = self.resolver.clone();
-    let is_running = self.is_running.clone();
+    let status = self.status.clone();
 
     // Launch a 'request receiving' thread
-    self.receiver_thread_handle = Some(thread::Builder::new()
+    self.receiver_thread = Some(thread::Builder::new()
       .name(PROCESSOR_RECEIVER_THREAD_NAME.into())
       .spawn(move || {
-        // Create a new thread pool
-        let pool = init_pool();
-        let receive_timeout_duration = Duration::from_secs(PROCESSOR_RECEIVER_TIMEOUT_SEC);
+        let pool = crate_thread_pool();
+
+        status.started();
 
         // Receive 'requests' for processing, but interrupt at regular intervals to check if Processor was stopped
         loop {
-          match receiver.recv_timeout(receive_timeout_duration) {
+          match receiver.recv_timeout(Duration::from_secs(PROCESSOR_RECEIVER_TIMEOUT_SEC)) {
             Ok(req) => {
               {
                 let q = req.dns_query();
-                debug!("Received: id={} type={:?} queries={:?}", q.id(), q.message_type(), q.queries());
+                let s = req.source();
+                debug!("Received: id={} type={:?} source={} queries={:?}", q.id(), q.message_type(), s, q.queries());
               }
 
               let resolver = resolver.clone();
               pool.execute(move || resolve_and_respond(req, resolver));
             },
             Err(XBeamRecvTimeoutError::Timeout) => {
-              if !is_running.load(Ordering::Relaxed) {
-                trace!("Processor is done running: stop receiving requests");
+              if status.is_stopping() {
+                trace!("{} is done running: stop processing requests", PROCESSOR_SERVICE_NAME);
                 break;
               }
             },
             Err(err) => {
-              error!("Unexpected error when receiving requests: {}", err);
+              error!("Unexpected error when processing requests: {}", err);
             }
           }
         }
@@ -89,44 +100,41 @@ impl Processor {
         debug!("Wait for any pending processing...");
         pool.join();
         debug!("... done processing");
+
+        status.stopped();
       })
       .expect(format!("Unable to spawn thread: {}", PROCESSOR_RECEIVER_THREAD_NAME).as_ref())
     );
   }
 
-  /// Stop the Processor
-  ///
-  /// NOTE: This method is asynchronous (i.e. non blocking)
-  pub fn stop(&mut self) {
-    trace!("Processor should now stop...");
-    self.do_stop_running();
+  fn await_started(&mut self) {
+    while !self.status.is_started() {}
   }
 
-  /// Away Processor termination
-  ///
-  /// NOTE: This consumes the Processor instance
-  pub fn await_termination(self) {
-    // Wait for receiver thread to stop, only if it's actually set
-    if self.receiver_thread_handle.is_some() {
-      self.receiver_thread_handle.unwrap()
+  fn stop(&mut self) {
+    trace!("{} should now stop...", PROCESSOR_SERVICE_NAME);
+    self.status.stopping();
+  }
+
+  fn await_stopped(&mut self) {
+    while !self.status.is_stopped() {}
+
+    // Wait for receiver thread to stop (if it's actually set)
+    if self.receiver_thread.is_some() {
+      self.receiver_thread
+        .take()
+        .unwrap()
         .join()
         .expect(format!("Panicked upon termination: {}", PROCESSOR_RECEIVER_THREAD_NAME).as_ref());
     }
   }
 
-  fn do_start_running(&mut self) {
-    self.is_running.swap(true, Ordering::Relaxed);
-  }
-
-  fn do_stop_running(&mut self) {
-    self.is_running.swap(false, Ordering::Relaxed);
-  }
 }
 
-fn init_pool() -> ThreadPool {
+fn crate_thread_pool() -> ThreadPool {
   ThreadPoolBuilder::new()
     .num_threads(num_cpus::get() * PROCESSOR_THREADS_COUNT_CPU_MULTIPLIER)
-    .thread_name(PROCESSOR_RESOLVER_THREADPOOL_NAME.into())
+    .thread_name(PROCESSOR_RESOLVER_THREAD_NAME.into())
     .build()
 }
 

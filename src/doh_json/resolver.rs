@@ -1,14 +1,19 @@
 //! Implementation of `DoHResolver` for the DoH JSON Protocol.
 
-use doh_json::{response::*, provider::DoHJsonProvider};
-use core::{provider::*, resolver::*, response::*};
-use dns::protocol::{DnsMessage, DnsMessageType};
+use super::{response::*, provider::DoHJsonProvider};
+use crate::core::{provider::*, resolver::*, response::*};
+use crate::dns::protocol::{DnsMessage, DnsMessageType};
+
+use log::*;
 use threadpool::{ThreadPool, Builder as ThreadPoolBuilder};
 use num_cpus;
 use curl::easy::{Easy as CurlEasy, HttpVersion as CurlHttpVersion, List as CurlList};
 use http::{Version as HttpVersion, Request as HttpRequest, HeaderMap as HttpHeaderMap};
 use crossbeam_channel::bounded;
+
 use std::time::Duration;
+
+const DOH_JSON_RESOLVER_THREAD_NAME: &'static str = "doh_json_resolver_thread";
 
 type Result<T> = std::result::Result<T, DoHResolutionError>;
 
@@ -154,8 +159,8 @@ fn execute_http_request(req_http: HttpRequest<()>) -> Result<DoHJsonResponse> {
 #[cfg(test)]
 mod test {
   use super::*;
-  use doh_json::provider::{self, DoHJsonProvider};
-  use dns::protocol::{DnsMessage, DnsRecordType, DnsClass, DnsRData, dns_message_to_bytes, dns_message_from_bytes};
+  use crate::doh_json::provider::{self, DoHJsonProvider};
+  use crate::dns::protocol::{DnsMessage, DnsRecordType, DnsClass, DnsRData, dns_message_to_bytes, dns_message_from_bytes};
   use std::{io::Read, fs::File, path::Path};
 
   fn read_file_to_vec<P: AsRef<Path>>(path: P) -> Vec<u8> {

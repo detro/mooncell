@@ -1,9 +1,11 @@
 //! Trait definition for DNS-over-HTTPS provider
 
-use core::protocol::DoHProtocol;
-use downcast_rs::Downcast;
-use dns::protocol::DnsQuery;
+use super::protocol::DoHProtocol;
+use crate::dns::protocol::DnsQuery;
+
+use downcast_rs::*;
 use http::{Result, Request};
+
 use std::{collections::HashMap, fmt};
 
 /// Trait defining a provider of DNS-over-HTTPS services

@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/detro/mooncell.svg?branch=master)](https://travis-ci.org/detro/mooncell)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 # Mooncell
 
@@ -15,11 +16,11 @@ It receives DNS requests (over UDP and TCP) and resolves them using a user selec
 * [x] Built in list of providers to pick from
 * [x] DNS-over-HTTPS via JSON
 * [ ] Handle resolution errors by returning an empty response
+* [x] Switch to Rust 2018
 
 ## Follow-up features
 
-* [ ] Switch to Rust 2018
-* [ ] Adopt Rust official tooling for code formatting/styling
+* [ ] Adopt Rust official tooling for code formatting/styling (`rustfmt`, `clippy`, ...)
 * [ ] A configurable, local cache (in memory to begin with, then look into file backed)
 * [ ] DNS-over-HTTPS via binary message
 * [ ] User-configurable provider
@@ -60,8 +61,9 @@ It receives DNS requests (over UDP and TCP) and resolves them using a user selec
 
 ## Personal notes
 
-* Both `Processor` and `Server` are services (similar to Guava services): 
+* ~~Both `Processor` and `Server` are services (similar to Guava services): 
   you are suppose to start them, stop them and (optionally) wait for them to terminate.
-  I think there is a good case here for implementing a tiny crate that provides Trait(s) for services _a la_ Guava.
+  I think there is a good case here for implementing a tiny crate that provides Trait(s) for services _a la_ Guava.~~
+  **UPDATE:** Created [srvzio](https://crates.io/crates/srvzio) and now Mooncell's services are based on it.
 * I made everything with Threads, but by the end I expect to rewrite everything using proper Rust **async/await**.
   I just could not surmount the Tokio + Hyper learning curve while also doing the same for the Rust language itself.

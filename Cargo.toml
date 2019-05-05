@@ -1,41 +1,54 @@
 [package]
 name = "mooncell"
-version = "1.0.0"
+version = "0.1.0"
 description = "A DNS-over-HTTPS server"
 authors = ["Ivan De Marino <detronizator@gmail.com>"]
-#edition = "2018"
+edition = "2018"
+repository = "https://github.com/detro/mooncell"
+license = "BSD-3-Clause"
+readme = "README.md"
 
 [dependencies]
-clap = "2.32.0"
+# Basics
+clap = "2.33.0"
 log = "0.4.6"
-log4rs = "0.8.1"
+log4rs = "0.8.3"
 exitcode = "1.1.2"
-downcast-rs = "1.0.3"
+downcast-rs = "1.0.4"
+srvzio = "1.1.0"
 
-crossbeam-channel = "0.3.8"
-
-trust-dns-proto = { version = "0.7.1", features = ["dnssec"] }
-
-http = "0.1.16"
-curl= { version = "0.4.20", features = ["ssl", "static-curl", "static-ssl"] }
-
-ipnet = "2.0.0"
-
+# Threading
 threadpool = "1.7.1"
 num_cpus = "1.10.0"
+crossbeam-channel = "0.3.8"
 
-serde = "1.0.89"
-serde_derive = "1.0.89"
+# DNS
+trust-dns-proto = { version = "0.7.3", features = ["dnssec"] }
+
+# Networking and HTTP
+http = "0.1.17"
+curl= { version = "0.4.21", features = ["ssl", "static-curl", "static-ssl"] }
+ipnet = "2.0.0"
+
+# Serialization/Deserialization and JSON
+serde = { version = "1.0.91", features = ["derive"] }
+serde_derive = "1.0.91"
 serde_json = "1.0.39"
-
-[lib]
-name = "mooncell"
-path = "src/lib.rs"
 
 [[bin]]
 name = "mooncell"
 path = "src/main.rs"
 
+exclude = [
+    ".travis.yml",
+    ".gitignore",
+]
+
 [profile.release]
 lto = true
-panic = 'abort'
+incremental = true
+opt-level = 3
+
+[badges]
+maintenance = { status = "actively-developed" }
+travis-ci = { repository = "detro/srvzio", branch = "master" }

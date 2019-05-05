@@ -1,9 +1,11 @@
 //! Configuration Provider trait (schema)
 
+use crate::core::{protocol::DoHProtocol, provider::DoHProvider, resolver::DoHResolver};
+use crate::doh_json::{resolver::DoHJsonResolver, provider::DoHJsonProvider};
+
 use log::LevelFilter;
+
 use std::net::{Ipv4Addr, Ipv6Addr};
-use core::{protocol::DoHProtocol, provider::DoHProvider, resolver::DoHResolver};
-use doh_json::{resolver::DoHJsonResolver, provider::DoHJsonProvider};
 
 /// This trait is implemented by types that _provide configuration_ to the rest of the application.
 pub trait Config {
