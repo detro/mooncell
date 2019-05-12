@@ -1,6 +1,6 @@
 [package]
 name = "mooncell"
-version = "0.1.1-dev"
+version = "0.1.1"
 description = "A DNS-over-HTTPS server"
 authors = ["Ivan De Marino <detronizator@gmail.com>"]
 edition = "2018"
