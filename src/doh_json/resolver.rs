@@ -32,7 +32,7 @@ impl DoHJsonResolver {
   pub fn new(provider: DoHJsonProvider) -> DoHJsonResolver {
     let pool = ThreadPoolBuilder::new()
       .num_threads(num_cpus::get())
-      .thread_name("DoHJsonResolver Thread Pool".into())
+      .thread_name(DOH_JSON_RESOLVER_THREAD_NAME.into())
       .build();
 
     DoHJsonResolver {
