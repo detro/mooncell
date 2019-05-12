@@ -1,11 +1,23 @@
+[![Crates.io](http://meritbadge.herokuapp.com/mooncell)](https://crates.io/crates/mooncell)
 [![Build Status](https://travis-ci.org/detro/mooncell.svg?branch=master)](https://travis-ci.org/detro/mooncell)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 # Mooncell
 
-A DNS over HTTPS proxy/bridge.
+A DNS over HTTPS proxy/bridge. The aim? Increasing your privacy, by avoiding your ISP DNS resolver.
 
 It receives DNS requests (over UDP and TCP) and resolves them using a user selected provider.
+
+## Try it!
+
+```bash
+cargo install mooncell
+# ...
+mooncell -h
+```
+
+As you can see below, there are still features to be implemented for Mooncell to be considered
+_"production worthy"_, but right now it's enough for _you_ to play around with it.
 
 ## Requirements for `1.0`
 
