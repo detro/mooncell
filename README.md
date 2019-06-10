@@ -21,6 +21,8 @@ _"production worthy"_, but right now it's enough for _you_ to play around with i
 
 ## Requirements for `1.0`
 
+* [ ] Avoid circular calls by pre-resolving the providers hostnames.
+  Will probably need a built-in list of IP-based DNS resolvers to use at launch.
 * [x] Full end-to-end resolution
 * [x] Configurable port to listen on
 * [x] Support for UDP requests
