@@ -8,6 +8,11 @@ repository = "https://github.com/detro/mooncell"
 license = "BSD-3-Clause"
 readme = "README.md"
 
+exclude = [
+    ".travis.yml",
+    ".gitignore",
+]
+
 [dependencies]
 # Basics
 clap = "2.33.0"
@@ -39,10 +44,8 @@ serde_json = "1.0.39"
 name = "mooncell"
 path = "src/main.rs"
 
-exclude = [
-    ".travis.yml",
-    ".gitignore",
-]
+[package.metadata.release]
+dev-version-ext = "dev"
 
 [profile.release]
 lto = true
